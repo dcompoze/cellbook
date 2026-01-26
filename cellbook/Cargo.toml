@@ -1,0 +1,17 @@
+[package]
+edition = "2021"
+name = "cellbook"
+version = "0.0.0"
+
+[lib]
+name = "cellbook"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow = "1.0.100"
+crossterm = "0.29.0"
+duckdb = { version = "1.4.1", features = ["polars"] }
+parking_lot = "0.12.5"
+ratatui = "0.29.0"
+signal-hook = "0.3.18"
+thiserror = "2.0.17"

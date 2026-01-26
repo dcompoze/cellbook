@@ -1,10 +1,11 @@
-[package]
-name = "cellbook"
-version = "0.0.0"
+[workspace]
+default-members = []
+exclude = []
+members = ["cellbook-cli", "cellbook"]
+resolver = "2"
+
+[workspace.package]
 edition = "2021"
+version = "0.1.0"
 
-[lib]
-path = "src/lib.rs"
-name = "cellbook"
-
-[dependencies]
+[workspace.dependencies]
