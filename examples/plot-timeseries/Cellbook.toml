@@ -1,0 +1,12 @@
+[cellbook]
+# Configuration for cellbook project
+
+[programs]
+# image-viewer = "eog"
+# editor = "vim"
+
+[interface]
+# table-format = "unicode"
+
+[execution]
+# compile-on-save = true

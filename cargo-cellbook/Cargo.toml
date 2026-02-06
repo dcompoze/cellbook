@@ -1,0 +1,11 @@
+[package]
+edition = "2021"
+name = "cargo-cellbook"
+version = "0.0.0"
+
+[[bin]]
+name = "cargo-cellbook"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }

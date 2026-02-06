@@ -1,7 +1,7 @@
 [workspace]
 default-members = []
 exclude = []
-members = ["cellbook-cli", "cellbook"]
+members = ["cargo-cellbook", "cellbook", "cellbook-macros", "examples/*"]
 resolver = "2"
 
 [workspace.package]
