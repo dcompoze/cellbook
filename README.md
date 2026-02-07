@@ -1,19 +1,20 @@
-<br>
 <div style="text-align: center"><img src="./cellbook.svg" width="20%"></div>
-
 
 # Cellbook
 
 Computational notebook experience in plain Rust.
 
-Define cells as async functions, share data between them via a typed context store, and run them interactively from the command line.
+- Cells are defined as `async` functions with `#[cell]` annotations
 
-## Features
+- Cells are compiled as a `dylib` crate and dynamically reloaded on changes
 
-- **Cell-based workflow** - Break analysis into discrete, rerunnable steps
-- **Typed context store** - Share data between cells with compile-time type safety
-- **Hot reloading** - Edit code and rerun cells without restarting (planned)
-- **Pure Rust** - No notebooks, no Python, just `cargo run`
+- `cargo-cellbook` CLI utility provides a TUI runner and automatic reloader
+
+- Cells have access to a shared store which retains the cell context across reloads
+
+- Cell output is stored and can be viewed in the TUI runner
+
+- Integrates with external applications to view images, plots, graphs, etc.
 
 ## Installation
 
@@ -21,17 +22,17 @@ Define cells as async functions, share data between them via a typed context sto
 cargo install cargo-cellbook
 ```
 
-## Quick Start
+To create and run a new cellbook project use:
 
 ```bash
-cargo cellbook init my-analysis
-cd my-analysis
-cargo run
+cargo cellbook init <project-name>
+cd <project-name>
+cargo cellbook run
 ```
 
-This creates a new cellbook project with a single `cellbook.rs` file.
+## Notebook structure
 
-## Usage
+The notebook consists of individual cells which are loaded in source order and the `cellbook!(Config::default())` invocation which sets up the notebook with configuration options.
 
 ```rust
 use cellbook::{cell, cellbook, load, store, Config, Result};
@@ -63,33 +64,32 @@ async fn compute_stats() -> Result<()> {
     Ok(())
 }
 
-cellbook!();
+cellbook!(Config::default());
 ```
 
-Run with `cargo run`, then select cells to execute by number.
+## Context store
 
-## Context Store
+Cells can store persistent data in the shared store using `store!()`, `load!()`, `remove!()`, `consume!()` convenience macros.
 
-Cells share data through a key-value store with typed access:
+Values in the store are serialized with [postcard](https://crates.io/crates/postcard), hence stored types must implement serde's `Serialize` and `Deserialize` traits.
+
 
 ```rust
-// Store a value (key is the variable name)
+// Store a value (variable name becomes the key)
 store!(data)?;
 
 // Store with explicit key
 store!(my_key = some_value)?;
 
-// Load a value (must specify type)
+// Load a value (type has to be specified)
 let data: Vec<f64> = load!(data as Vec<f64>)?;
 
-// Remove a value
+// Remove a value from the store
 remove!(data);
 
-// Load and remove in one operation
+// Load and remove the value from the store
 let data: Vec<f64> = consume!(data as Vec<f64>)?;
 ```
-
-Values are serialized with [postcard](https://crates.io/crates/postcard), so stored types must implement `Serialize` and `Deserialize`.
 
 ## Components
 
