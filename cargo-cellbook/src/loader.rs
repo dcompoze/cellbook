@@ -3,12 +3,16 @@
 //! Loads user's compiled dylib and discovers cells via __cellbook_get_cells().
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use futures::future::BoxFuture;
 use libloading::{Library, Symbol};
 
 use crate::errors::{Error, Result};
 use crate::store;
+
+/// Counter for generating unique library paths on reload
+static RELOAD_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 /// Information about a registered cell
 #[derive(Clone)]
@@ -65,8 +69,22 @@ pub struct LoadedLibrary {
     _old_libraries: Vec<Library>,
     cells: Vec<CellInfo>,
     cell_fns: Vec<CellFn>,
+    /// Path to the original library (source of truth after rebuilds)
     lib_path: PathBuf,
+    /// Path to the currently loaded copy (may be a temp file)
+    loaded_path: PathBuf,
+    /// Temporary paths to clean up on drop
+    temp_paths: Vec<PathBuf>,
     config: Config,
+}
+
+impl Drop for LoadedLibrary {
+    fn drop(&mut self) {
+        // Clean up temporary library copies
+        for path in &self.temp_paths {
+            let _ = std::fs::remove_file(path);
+        }
+    }
 }
 
 impl LoadedLibrary {
@@ -112,15 +130,32 @@ impl LoadedLibrary {
             cells,
             cell_fns,
             lib_path: lib_path.to_path_buf(),
+            loaded_path: lib_path.to_path_buf(),
+            temp_paths: Vec::new(),
             config,
         })
     }
 
     /// Reload the library
     pub fn reload(&mut self) -> Result<()> {
-        // Load the new library
-        let library = unsafe { Library::new(&self.lib_path) }
-            .map_err(|e| Error::LibLoad(format!("Failed to load {}: {}", self.lib_path.display(), e)))?;
+        // Copy library to a unique path to bypass dlopen's caching
+        // dlopen caches by path, so loading the same path returns the old library
+        let counter = RELOAD_COUNTER.fetch_add(1, Ordering::SeqCst);
+        let unique_path = PathBuf::from(format!("{}.reload.{}", self.lib_path.display(), counter));
+
+        std::fs::copy(&self.lib_path, &unique_path).map_err(|e| {
+            Error::LibLoad(format!(
+                "Failed to copy library for reload: {}",
+                e
+            ))
+        })?;
+
+        // Load the new library from the unique path
+        let library = unsafe { Library::new(&unique_path) }.map_err(|e| {
+            // Clean up on failure
+            let _ = std::fs::remove_file(&unique_path);
+            Error::LibLoad(format!("Failed to load {}: {}", unique_path.display(), e))
+        })?;
 
         let (cells, cell_fns, config) = unsafe {
             let get_cells: Symbol<GetCellsFn> = library
@@ -151,8 +186,12 @@ impl LoadedLibrary {
             (sorted_cells, sorted_fns, config)
         };
 
-        // Replace old library (can drop it now since we use serialization)
+        // Track the temp path for cleanup
+        self.temp_paths.push(unique_path.clone());
+
+        // Replace old library
         self._library = library;
+        self.loaded_path = unique_path;
         self.cells = cells;
         self.cell_fns = cell_fns;
         self.config = config;

@@ -1,7 +1,7 @@
 //! Context handle for cells to access the host's store.
 //!
 //! The CellContext is passed to each cell by the host (cargo-cellbook).
-//! Values are serialized with bincode for storage, allowing them to
+//! Values are serialized with postcard for storage, allowing them to
 //! survive hot-reloads where TypeIds change.
 
 use std::any::type_name;
@@ -25,7 +25,7 @@ pub type ListFn = fn() -> Vec<(String, String)>;
 /// Handle to the host's context store.
 ///
 /// This is passed to each cell and provides typed access to store/load operations.
-/// Values are serialized with bincode, so stored types must implement Serialize
+/// Values are serialized with postcard, so stored types must implement Serialize
 /// and DeserializeOwned.
 #[derive(Clone, Copy)]
 pub struct CellContext {
@@ -48,9 +48,9 @@ impl CellContext {
 
     /// Store a value in the context with the given key.
     ///
-    /// The value is serialized with bincode.
+    /// The value is serialized with postcard.
     pub fn store<T: Serialize>(&self, key: &str, value: &T) -> Result<()> {
-        let bytes = bincode::serialize(value).map_err(|e| ContextError::Serialization {
+        let bytes = postcard::to_stdvec(value).map_err(|e| ContextError::Serialization {
             key: key.to_string(),
             message: e.to_string(),
         })?;
@@ -60,12 +60,12 @@ impl CellContext {
 
     /// Load a value from the context by key.
     ///
-    /// The value is deserialized from bincode.
+    /// The value is deserialized with postcard.
     pub fn load<T: DeserializeOwned>(&self, key: &str) -> Result<T> {
         let (bytes, _type_name) = (self.load_fn)(key)
             .ok_or_else(|| ContextError::NotFound(key.to_string()))?;
 
-        bincode::deserialize(&bytes).map_err(|e| {
+        postcard::from_bytes(&bytes).map_err(|e| {
             ContextError::Deserialization {
                 key: key.to_string(),
                 message: e.to_string(),
@@ -88,7 +88,7 @@ impl CellContext {
         let (bytes, _type_name) = (self.remove_fn)(key)
             .ok_or_else(|| ContextError::NotFound(key.to_string()))?;
 
-        bincode::deserialize(&bytes).map_err(|e| {
+        postcard::from_bytes(&bytes).map_err(|e| {
             ContextError::Deserialization {
                 key: key.to_string(),
                 message: e.to_string(),

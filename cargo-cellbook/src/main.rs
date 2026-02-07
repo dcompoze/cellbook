@@ -74,10 +74,15 @@ async fn run_project() -> Result<()> {
     let (event_tx, event_rx) = mpsc::channel(32);
 
     // Start file watcher (uses config for auto_reload and debounce_ms)
-    watcher::start_watcher(event_tx, lib.config()).await?;
+    let watcher_handle = watcher::start_watcher(event_tx, lib.config()).await?;
 
     // Run the TUI
     runner::run_tui(&mut lib, event_rx).await?;
+
+    // Stop the watcher when TUI exits
+    if let Some(handle) = watcher_handle {
+        handle.stop();
+    }
 
     Ok(())
 }

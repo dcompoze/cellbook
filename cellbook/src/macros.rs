@@ -1,6 +1,6 @@
 /// Store a value in the context using the variable name as key.
 ///
-/// The value must implement `Serialize`. It is serialized with bincode.
+/// The value must implement `Serialize`. It is serialized with postcard.
 /// The `ctx` parameter is the CellContext handle injected by the `#[cell]` macro.
 ///
 /// # Examples

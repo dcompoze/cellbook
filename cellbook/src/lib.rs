@@ -5,7 +5,7 @@
 //!
 //! # Serialization
 //!
-//! Values stored in the context are serialized with bincode. This means:
+//! Values stored in the context are serialized with postcard. This means:
 //! - Stored types must implement `Serialize`
 //! - Loaded types must implement `DeserializeOwned`
 //! - Values survive hot-reloads because they're stored as bytes, not as Rust types

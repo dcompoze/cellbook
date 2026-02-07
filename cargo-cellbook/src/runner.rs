@@ -2,7 +2,7 @@
 //!
 //! Provides an interactive loop for running cells and viewing context.
 
-use std::io::Write;
+use std::io::{BufRead, Write};
 
 use tokio::sync::mpsc;
 
@@ -27,69 +27,111 @@ pub async fn run_tui(
 ) -> Result<()> {
     print_header(lib);
 
-    loop {
-        // Check for events without blocking
-        while let Ok(event) = event_rx.try_recv() {
-            match event {
-                TuiEvent::Reloaded => {
-                    match lib.reload() {
-                        Ok(()) => {
-                            println!("\n✓ Reloaded\n");
-                            print_cells(lib);
-                        }
-                        Err(e) => {
-                            println!("\nReload error: {}\n", e);
-                        }
+    // Spawn a blocking task to read stdin lines and send them through a channel
+    let (input_tx, mut input_rx) = mpsc::channel::<String>(32);
+    std::thread::spawn(move || {
+        let stdin = std::io::stdin();
+        let reader = stdin.lock();
+        for line in reader.lines() {
+            match line {
+                Ok(line) => {
+                    if input_tx.blocking_send(line).is_err() {
+                        // Receiver dropped, exit
+                        break;
                     }
                 }
-                TuiEvent::BuildStarted => {
-                    print!("Building...");
-                    std::io::stdout().flush()?;
+                Err(_) => break,
+            }
+        }
+    });
+
+    print!("> ");
+    std::io::stdout().flush()?;
+
+    loop {
+        tokio::select! {
+            biased;
+
+            // Handle TUI events (reload notifications, build status)
+            event = event_rx.recv() => {
+                match event {
+                    Some(TuiEvent::Reloaded) => {
+                        match lib.reload() {
+                            Ok(()) => {
+                                println!("\n✓ Reloaded\n");
+                                print_cells(lib);
+                            }
+                            Err(e) => {
+                                println!("\nReload error: {}\n", e);
+                            }
+                        }
+                        print!("> ");
+                        std::io::stdout().flush()?;
+                    }
+                    Some(TuiEvent::BuildStarted) => {
+                        print!("\rBuilding...");
+                        std::io::stdout().flush()?;
+                    }
+                    Some(TuiEvent::BuildCompleted(None)) => {
+                        println!(" done");
+                        print!("> ");
+                        std::io::stdout().flush()?;
+                    }
+                    Some(TuiEvent::BuildCompleted(Some(err))) => {
+                        println!("\nBuild error:\n{}", err);
+                        print!("> ");
+                        std::io::stdout().flush()?;
+                    }
+                    None => {
+                        // Event channel closed
+                        break;
+                    }
                 }
-                TuiEvent::BuildCompleted(None) => {
-                    println!(" done");
-                }
-                TuiEvent::BuildCompleted(Some(err)) => {
-                    println!("\nBuild error:\n{}", err);
+            }
+
+            // Handle user input
+            input = input_rx.recv() => {
+                match input {
+                    Some(line) => {
+                        let input = line.trim();
+                        match input {
+                            "q" | "quit" => break,
+                            "a" | "all" => {
+                                run_all_cells(lib).await;
+                            }
+                            "c" | "context" => {
+                                print_context();
+                            }
+                            "r" | "reload" => {
+                                println!("Use file save to trigger reload");
+                            }
+                            "x" | "clear" => {
+                                store::clear();
+                                println!("Context cleared");
+                            }
+                            "?" | "h" | "help" => {
+                                print_help();
+                            }
+                            "" => {}
+                            _ => {
+                                if let Ok(n) = input.parse::<usize>() {
+                                    run_cell_by_number(lib, n).await;
+                                } else {
+                                    println!("Unknown command: {} (type ? for help)", input);
+                                }
+                            }
+                        }
+                        println!();
+                        print!("> ");
+                        std::io::stdout().flush()?;
+                    }
+                    None => {
+                        // Input channel closed (stdin EOF)
+                        break;
+                    }
                 }
             }
         }
-
-        print!("> ");
-        std::io::stdout().flush()?;
-
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input)?;
-        let input = input.trim();
-
-        match input {
-            "q" | "quit" => break,
-            "a" | "all" => {
-                run_all_cells(lib).await;
-            }
-            "c" | "context" => {
-                print_context();
-            }
-            "r" | "reload" => {
-                println!("Use file save to trigger reload");
-            }
-            "x" | "clear" => {
-                store::clear();
-                println!("Context cleared");
-            }
-            "?" | "h" | "help" => {
-                print_help();
-            }
-            "" => {}
-            _ => {
-                if let Ok(n) = input.parse::<usize>() {
-                    run_cell_by_number(lib, n).await;
-                } else {
-                    println!("Unknown command: {} (type ? for help)", input);
-                }
-            }
-        }
-        println!();
     }
 
     Ok(())

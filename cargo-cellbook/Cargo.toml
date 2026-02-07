@@ -14,7 +14,7 @@ name = "cargo-cellbook"
 path = "src/main.rs"
 
 [dependencies]
-bincode = "1"
+postcard = { version = "1", features = ["use-std"] }
 clap = { version = "4", features = ["derive"] }
 futures = "0.3"
 libloading = "0.9"
