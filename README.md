@@ -1,4 +1,4 @@
-<div style="text-align: center"><img src="./cellbook.svg" width="20%"></div>
+<div style="text-align: center"><img src="https://raw.githubusercontent.com/dcompoze/cellbook/main/cellbook.svg" width="20%"></div>
 
 # Cellbook
 

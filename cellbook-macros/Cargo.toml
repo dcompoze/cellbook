@@ -3,7 +3,7 @@ description = "Procedural macros for the cellbook crate"
 edition.workspace = true
 license.workspace = true
 name = "cellbook-macros"
-readme = "../README.md"
+readme = "README.md"
 repository.workspace = true
 version.workspace = true
 
