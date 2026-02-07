@@ -1,11 +1,15 @@
 [workspace]
-default-members = []
+default-members = ["cargo-cellbook", "cellbook", "cellbook-macros"]
 exclude = []
 members = ["cargo-cellbook", "cellbook", "cellbook-macros", "examples/*"]
 resolver = "2"
 
 [workspace.package]
+categories = ["development-tools", "command-line-utilities", "science", "mathematics"]
 edition = "2021"
+keywords = ["notebook", "data-analysis", "statistics", "repl"]
+license = "MIT"
+repository = "https://github.com/dcompoze/cellbook"
 version = "0.1.0"
 
 [workspace.dependencies]

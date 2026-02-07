@@ -1,14 +1,13 @@
-use std::sync::Arc;
+use cellbook::{cell, cellbook, load, store, Config, Result};
+use serde::{Deserialize, Serialize};
 
-use cellbook::{cell, cellbook, load, store, Result};
-
-#[derive(Debug, Clone)]
-struct Config {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct DemoConfig {
     threshold: f64,
     name: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct AnalysisResult {
     mean: f64,
     count: usize,
@@ -16,14 +15,14 @@ struct AnalysisResult {
 
 #[cell]
 async fn setup() -> Result<()> {
-    let config = Config {
+    let config = DemoConfig {
         threshold: 2.5,
         name: "demo".to_string(),
     };
-    store!(config);
+    store!(config)?;
 
     let raw_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 100.0];
-    store!(raw_data);
+    store!(raw_data)?;
 
     println!("Setup complete - stored config and raw_data");
     Ok(())
@@ -31,8 +30,8 @@ async fn setup() -> Result<()> {
 
 #[cell]
 async fn analyze() -> Result<()> {
-    let config: Arc<Config> = load!(config as Config)?;
-    let raw_data: Arc<Vec<f64>> = load!(raw_data as Vec<f64>)?;
+    let config: DemoConfig = load!(config as DemoConfig)?;
+    let raw_data: Vec<f64> = load!(raw_data as Vec<f64>)?;
 
     let mean = raw_data.iter().sum::<f64>() / raw_data.len() as f64;
     let count = raw_data
@@ -43,14 +42,14 @@ async fn analyze() -> Result<()> {
     let result = AnalysisResult { mean, count };
     println!("Analysis: mean={:.2}, valid_count={}", result.mean, result.count);
 
-    store!(result);
+    store!(result)?;
     Ok(())
 }
 
 #[cell]
 async fn report() -> Result<()> {
-    let config: Arc<Config> = load!(config as Config)?;
-    let result: Arc<AnalysisResult> = load!(result as AnalysisResult)?;
+    let config: DemoConfig = load!(config as DemoConfig)?;
+    let result: AnalysisResult = load!(result as AnalysisResult)?;
 
     println!("=== Report for '{}' ===", config.name);
     println!("Threshold: {}", config.threshold);
@@ -60,8 +59,4 @@ async fn report() -> Result<()> {
     Ok(())
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    cellbook!()?;
-    Ok(())
-}
+cellbook!(Config::default().show_timings(true));

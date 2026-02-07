@@ -1,7 +1,15 @@
+mod errors;
+mod loader;
+mod runner;
+mod store;
+mod watcher;
+
 use std::fs;
 use std::path::Path;
 
 use clap::{Args, Parser, Subcommand};
+use errors::Result;
+use tokio::sync::mpsc;
 
 #[derive(Parser)]
 #[command(name = "cargo-cellbook")]
@@ -31,94 +39,91 @@ enum Commands {
         /// Name of the project
         name: String,
     },
+    /// Run the cellbook TUI with hot-reloading
+    Run,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
 
-    match cli.command {
+    let result = match cli.command {
         CargoSubcommand::Cellbook(args) => match args.command {
-            Commands::Init { name } => {
-                if let Err(e) = init_project(&name) {
-                    eprintln!("Error: {}", e);
-                    std::process::exit(1);
-                }
-            }
+            Commands::Init { name } => init_project(&name),
+            Commands::Run => run_project().await,
         },
+    };
+
+    if let Err(e) = result {
+        eprintln!("Error: {}", e);
+        std::process::exit(1);
     }
 }
 
-fn init_project(name: &str) -> Result<(), Box<dyn std::error::Error>> {
+async fn run_project() -> Result<()> {
+    // Find the dylib path
+    let lib_path = loader::find_dylib_path()?;
+
+    // Initial build
+    watcher::initial_build().await?;
+
+    // Load the library
+    let mut lib = loader::LoadedLibrary::load(&lib_path)?;
+
+    // Set up event channel
+    let (event_tx, event_rx) = mpsc::channel(32);
+
+    // Start file watcher (uses config for auto_reload and debounce_ms)
+    watcher::start_watcher(event_tx, lib.config()).await?;
+
+    // Run the TUI
+    runner::run_tui(&mut lib, event_rx).await?;
+
+    Ok(())
+}
+
+fn init_project(name: &str) -> Result<()> {
     let project_path = Path::new(name);
 
     if project_path.exists() {
-        return Err(format!("Directory '{}' already exists", name).into());
+        return Err(errors::Error::Io(std::io::Error::new(
+            std::io::ErrorKind::AlreadyExists,
+            format!("Directory '{}' already exists", name),
+        )));
     }
 
     // Create project directory
     fs::create_dir_all(project_path)?;
 
-    // Create Cargo.toml
+    // Create Cargo.toml for a dylib crate
     let cargo_toml = format!(
         r#"[package]
 name = "{name}"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-name = "{name}"
+[lib]
+crate-type = ["cdylib", "rlib"]
 path = "cellbook.rs"
 
 [dependencies]
 cellbook = "0.1"
-tokio = {{ version = "1", features = ["rt-multi-thread", "macros"] }}
 "#
     );
     fs::write(project_path.join("Cargo.toml"), cargo_toml)?;
 
-    // Create cellbook.rs
-    let cellbook_rs = r#"use cellbook::{cell, cellbook, load, store, Result};
+    // Create cellbook.rs with example cell
+    let cellbook_rs = r#"use cellbook::{cell, cellbook, Config, Result};
 
 #[cell]
-async fn hello_world() -> Result<()> {
-    println!("Hello from cellbook!");
-
-    let message = "Hello, World!".to_string();
-    store!(message);
-
+async fn hello() -> Result<()> {
+    println!("Hello");
     Ok(())
 }
 
-#[cell]
-async fn show_message() -> Result<()> {
-    let message = load!(message as String)?;
-    println!("Stored message: {}", message);
-    Ok(())
-}
-
-#[tokio::main]
-async fn main() -> Result<()> {
-    cellbook!()?;
-    Ok(())
-}
+cellbook!(Config::default());
 "#;
     fs::write(project_path.join("cellbook.rs"), cellbook_rs)?;
-
-    // Create Cellbook.toml (configuration)
-    let cellbook_toml = r#"[cellbook]
-# Configuration for cellbook project
-
-[programs]
-# image-viewer = "eog"
-# editor = "vim"
-
-[interface]
-# table-format = "unicode"
-
-[execution]
-# compile-on-save = true
-"#;
-    fs::write(project_path.join("Cellbook.toml"), cellbook_toml)?;
 
     println!("Created cellbook project: {}", name);
 

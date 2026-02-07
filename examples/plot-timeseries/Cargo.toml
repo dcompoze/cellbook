@@ -3,10 +3,9 @@ edition = "2021"
 name = "plot-timeseries"
 version = "0.1.0"
 
-[[bin]]
-name = "plot-timeseries"
+[lib]
+crate-type = ["cdylib", "rlib"]
 path = "cellbook.rs"
 
 [dependencies]
 cellbook = { path = "../../cellbook" }
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

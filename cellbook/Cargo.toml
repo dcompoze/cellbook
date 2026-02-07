@@ -1,15 +1,23 @@
 [package]
-edition = "2021"
+categories.workspace = true
+description = "A computational notebook environment for statistics and data analysis in Rust"
+edition.workspace = true
+keywords.workspace = true
+license.workspace = true
 name = "cellbook"
-version = "0.0.0"
+readme = "../README.md"
+repository.workspace = true
+version.workspace = true
 
 [lib]
 name = "cellbook"
 path = "src/lib.rs"
 
 [dependencies]
-cellbook-macros = { path = "../cellbook-macros" }
+bincode = "1"
+cellbook-macros = { version = "0.1.0", path = "../cellbook-macros" }
 futures = "0.3"
 inventory = "0.3"
 parking_lot = "0.12"
-thiserror = "2.0.17"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2.0.18"

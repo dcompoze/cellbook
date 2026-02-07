@@ -1,24 +1,9 @@
-use cellbook::{cell, cellbook, load, store, Result};
+use cellbook::{cell, cellbook, Config, Result};
 
 #[cell]
-async fn hello_world() -> Result<()> {
-    println!("Hello from cellbook!");
-
-    let message = "Hello, World!".to_string();
-    store!(message);
-
+async fn hello() -> Result<()> {
+    println!("Hello");
     Ok(())
 }
 
-#[cell]
-async fn show_message() -> Result<()> {
-    let message = load!(message as String)?;
-    println!("Stored message: {}", message);
-    Ok(())
-}
-
-#[tokio::main]
-async fn main() -> Result<()> {
-    cellbook!()?;
-    Ok(())
-}
+cellbook!(Config::default());
