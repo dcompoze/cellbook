@@ -243,7 +243,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-cellbook"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clap",
  "futures",
@@ -280,7 +280,7 @@ dependencies = [
 
 [[package]]
 name = "cellbook"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "cellbook-macros",
  "futures",
@@ -293,7 +293,7 @@ dependencies = [
 
 [[package]]
 name = "cellbook-macros"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "proc-macro2",
  "quote",
