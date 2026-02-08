@@ -13,9 +13,9 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Min(5),    // Cells
-            Constraint::Length(8), // Context
-            Constraint::Length(1), // Status bar
+            Constraint::Ratio(2, 3), // Cells
+            Constraint::Ratio(1, 3), // Context
+            Constraint::Length(1),   // Status bar
         ])
         .split(frame.area());
 

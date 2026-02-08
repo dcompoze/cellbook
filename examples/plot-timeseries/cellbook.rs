@@ -1,6 +1,6 @@
 //! Stock price analysis example.
 
-use cellbook::{cell, cellbook, load, store, Config, Result};
+use cellbook::{cell, cellbook, load, open_image_bytes, store, Config, Result};
 use plotters::prelude::*;
 use polars::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -177,73 +177,72 @@ async fn compute_stats() -> Result<()> {
 async fn plot_prices() -> Result<()> {
     let all_prices: Vec<StockPrices> = load!(all_prices)?;
 
-    let output_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/output");
-    std::fs::create_dir_all(output_dir)?;
-    let output_path = concat!(env!("CARGO_MANIFEST_DIR"), "/output/price_history.svg");
-
     let all_closes: Vec<f64> = all_prices.iter().flat_map(|p| p.closes.clone()).collect();
     let y_min = all_closes.iter().cloned().fold(f64::INFINITY, f64::min) * 0.95;
     let y_max = all_closes.iter().cloned().fold(f64::NEG_INFINITY, f64::max) * 1.05;
 
     let num_days = all_prices[0].closes.len();
 
-    let root = SVGBackend::new(output_path, (800, 500)).into_drawing_area();
-    root.fill(&WHITE).map_err(plot_err)?;
+    let mut svg = String::new();
+    {
+        let root = SVGBackend::with_string(&mut svg, (800, 500)).into_drawing_area();
+        root.fill(&WHITE).map_err(plot_err)?;
 
-    let mut chart = ChartBuilder::on(&root)
-        .caption("Stock Price History", ("sans-serif", 24).into_font())
-        .margin(10)
-        .x_label_area_size(40)
-        .y_label_area_size(60)
-        .build_cartesian_2d(0usize..num_days, y_min..y_max)
-        .map_err(plot_err)?;
-
-    let dates = all_prices[0].dates.clone();
-    chart
-        .configure_mesh()
-        .x_labels(10)
-        .y_labels(10)
-        .x_label_formatter(&|x| {
-            if *x < dates.len() {
-                dates[*x][5..10].to_string()
-            } else {
-                String::new()
-            }
-        })
-        .y_label_formatter(&|y| format!("${:.0}", y))
-        .x_desc("Date")
-        .y_desc("Close Price")
-        .draw()
-        .map_err(plot_err)?;
-
-    let colors = [RED, BLUE, GREEN];
-
-    for (i, prices) in all_prices.iter().enumerate() {
-        let color = colors[i % colors.len()];
-        let data: Vec<(usize, f64)> = prices.closes.iter().cloned().enumerate().collect();
-
-        chart
-            .draw_series(LineSeries::new(data.clone(), color.stroke_width(2)))
-            .map_err(plot_err)?
-            .label(&prices.symbol)
-            .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], color.stroke_width(2)));
-
-        chart
-            .draw_series(data.iter().map(|(x, y)| Circle::new((*x, *y), 3, color.filled())))
+        let mut chart = ChartBuilder::on(&root)
+            .caption("Stock Price History", ("sans-serif", 24).into_font())
+            .margin(10)
+            .x_label_area_size(40)
+            .y_label_area_size(60)
+            .build_cartesian_2d(0usize..num_days, y_min..y_max)
             .map_err(plot_err)?;
+
+        let dates = all_prices[0].dates.clone();
+        chart
+            .configure_mesh()
+            .x_labels(10)
+            .y_labels(10)
+            .x_label_formatter(&|x| {
+                if *x < dates.len() {
+                    dates[*x][5..10].to_string()
+                } else {
+                    String::new()
+                }
+            })
+            .y_label_formatter(&|y| format!("${:.0}", y))
+            .x_desc("Date")
+            .y_desc("Close Price")
+            .draw()
+            .map_err(plot_err)?;
+
+        let colors = [RED, BLUE, GREEN];
+
+        for (i, prices) in all_prices.iter().enumerate() {
+            let color = colors[i % colors.len()];
+            let data: Vec<(usize, f64)> = prices.closes.iter().cloned().enumerate().collect();
+
+            chart
+                .draw_series(LineSeries::new(data.clone(), color.stroke_width(2)))
+                .map_err(plot_err)?
+                .label(&prices.symbol)
+                .legend(move |(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], color.stroke_width(2)));
+
+            chart
+                .draw_series(data.iter().map(|(x, y)| Circle::new((*x, *y), 3, color.filled())))
+                .map_err(plot_err)?;
+        }
+
+        chart
+            .configure_series_labels()
+            .background_style(WHITE.mix(0.8))
+            .border_style(BLACK)
+            .position(SeriesLabelPosition::UpperLeft)
+            .draw()
+            .map_err(plot_err)?;
+
+        root.present().map_err(plot_err)?;
     }
 
-    chart
-        .configure_series_labels()
-        .background_style(WHITE.mix(0.8))
-        .border_style(BLACK)
-        .position(SeriesLabelPosition::UpperLeft)
-        .draw()
-        .map_err(plot_err)?;
-
-    root.present().map_err(plot_err)?;
-
-    println!("Price history plot saved to: {}", output_path);
+    open_image_bytes(svg.as_bytes(), "svg")?;
 
     Ok(())
 }
@@ -252,8 +251,6 @@ async fn plot_prices() -> Result<()> {
 async fn plot_volume() -> Result<()> {
     let all_stats: Vec<StockStats> = load!(all_stats)?;
 
-    let output_path = concat!(env!("CARGO_MANIFEST_DIR"), "/output/volume_comparison.svg");
-
     let avg_volumes: Vec<f64> = all_stats
         .iter()
         .map(|s| s.total_volume as f64 / s.trading_days as f64 / 1_000_000.0)
@@ -261,50 +258,53 @@ async fn plot_volume() -> Result<()> {
 
     let y_max = avg_volumes.iter().cloned().fold(0.0, f64::max) * 1.2;
 
-    let root = SVGBackend::new(output_path, (600, 400)).into_drawing_area();
-    root.fill(&WHITE).map_err(plot_err)?;
+    let mut svg = String::new();
+    {
+        let root = SVGBackend::with_string(&mut svg, (600, 400)).into_drawing_area();
+        root.fill(&WHITE).map_err(plot_err)?;
 
-    let mut chart = ChartBuilder::on(&root)
-        .caption("Average Daily Volume (Millions)", ("sans-serif", 24).into_font())
-        .margin(10)
-        .x_label_area_size(40)
-        .y_label_area_size(60)
-        .build_cartesian_2d((0..all_stats.len()).into_segmented(), 0.0..y_max)
-        .map_err(plot_err)?;
+        let mut chart = ChartBuilder::on(&root)
+            .caption("Average Daily Volume (Millions)", ("sans-serif", 24).into_font())
+            .margin(10)
+            .x_label_area_size(40)
+            .y_label_area_size(60)
+            .build_cartesian_2d((0..all_stats.len()).into_segmented(), 0.0..y_max)
+            .map_err(plot_err)?;
 
-    chart
-        .configure_mesh()
-        .disable_x_mesh()
-        .y_label_formatter(&|y| format!("{:.1}M", y))
-        .x_label_formatter(&|x| {
-            if let SegmentValue::CenterOf(idx) = x {
-                all_stats.get(*idx).map(|s| s.symbol.clone()).unwrap_or_default()
-            } else {
-                String::new()
-            }
-        })
-        .draw()
-        .map_err(plot_err)?;
+        chart
+            .configure_mesh()
+            .disable_x_mesh()
+            .y_label_formatter(&|y| format!("{:.1}M", y))
+            .x_label_formatter(&|x| {
+                if let SegmentValue::CenterOf(idx) = x {
+                    all_stats.get(*idx).map(|s| s.symbol.clone()).unwrap_or_default()
+                } else {
+                    String::new()
+                }
+            })
+            .draw()
+            .map_err(plot_err)?;
 
-    let colors = [RED, BLUE, GREEN];
+        let colors = [RED, BLUE, GREEN];
 
-    chart
-        .draw_series(
-            Histogram::vertical(&chart)
-                .style_func(|x, _| {
-                    let idx = if let SegmentValue::CenterOf(i) = x { *i } else { 0 };
-                    colors[idx % colors.len()].filled()
-                })
-                .margin(20)
-                .data(avg_volumes.iter().enumerate().map(|(i, v)| (i, *v))),
-        )
-        .map_err(plot_err)?;
+        chart
+            .draw_series(
+                Histogram::vertical(&chart)
+                    .style_func(|x, _| {
+                        let idx = if let SegmentValue::CenterOf(i) = x { *i } else { 0 };
+                        colors[idx % colors.len()].filled()
+                    })
+                    .margin(20)
+                    .data(avg_volumes.iter().enumerate().map(|(i, v)| (i, *v))),
+            )
+            .map_err(plot_err)?;
 
-    root.present().map_err(plot_err)?;
+        root.present().map_err(plot_err)?;
+    }
 
-    println!("Volume comparison saved to: {}", output_path);
+    open_image_bytes(svg.as_bytes(), "svg")?;
 
-    println!("\nVolume Summary:");
+    println!("Volume Summary:");
     for (i, s) in all_stats.iter().enumerate() {
         println!("  {}: {:.2}M shares/day avg", s.symbol, avg_volumes[i]);
     }
@@ -316,59 +316,60 @@ async fn plot_volume() -> Result<()> {
 async fn plot_performance() -> Result<()> {
     let all_stats: Vec<StockStats> = load!(all_stats)?;
 
-    let output_path = concat!(env!("CARGO_MANIFEST_DIR"), "/output/performance.svg");
-
     let changes: Vec<f64> = all_stats.iter().map(|s| s.price_change_pct).collect();
     let y_min = changes.iter().cloned().fold(f64::INFINITY, f64::min).min(0.0) * 1.2;
     let y_max = changes.iter().cloned().fold(f64::NEG_INFINITY, f64::max).max(0.0) * 1.2;
 
-    let root = SVGBackend::new(output_path, (600, 400)).into_drawing_area();
-    root.fill(&WHITE).map_err(plot_err)?;
+    let mut svg = String::new();
+    {
+        let root = SVGBackend::with_string(&mut svg, (600, 400)).into_drawing_area();
+        root.fill(&WHITE).map_err(plot_err)?;
 
-    let mut chart = ChartBuilder::on(&root)
-        .caption("Price Change (%)", ("sans-serif", 24).into_font())
-        .margin(10)
-        .x_label_area_size(40)
-        .y_label_area_size(60)
-        .build_cartesian_2d((0..all_stats.len()).into_segmented(), y_min..y_max)
-        .map_err(plot_err)?;
+        let mut chart = ChartBuilder::on(&root)
+            .caption("Price Change (%)", ("sans-serif", 24).into_font())
+            .margin(10)
+            .x_label_area_size(40)
+            .y_label_area_size(60)
+            .build_cartesian_2d((0..all_stats.len()).into_segmented(), y_min..y_max)
+            .map_err(plot_err)?;
 
-    chart
-        .configure_mesh()
-        .disable_x_mesh()
-        .y_label_formatter(&|y| format!("{:+.1}%", y))
-        .x_label_formatter(&|x| {
-            if let SegmentValue::CenterOf(idx) = x {
-                all_stats.get(*idx).map(|s| s.symbol.clone()).unwrap_or_default()
-            } else {
-                String::new()
-            }
-        })
-        .draw()
-        .map_err(plot_err)?;
+        chart
+            .configure_mesh()
+            .disable_x_mesh()
+            .y_label_formatter(&|y| format!("{:+.1}%", y))
+            .x_label_formatter(&|x| {
+                if let SegmentValue::CenterOf(idx) = x {
+                    all_stats.get(*idx).map(|s| s.symbol.clone()).unwrap_or_default()
+                } else {
+                    String::new()
+                }
+            })
+            .draw()
+            .map_err(plot_err)?;
 
-    chart
-        .draw_series(
-            Histogram::vertical(&chart)
-                .style_func(|_, y| if *y >= 0.0 { GREEN.filled() } else { RED.filled() })
-                .margin(20)
-                .data(changes.iter().enumerate().map(|(i, v)| (i, *v))),
-        )
-        .map_err(plot_err)?;
+        chart
+            .draw_series(
+                Histogram::vertical(&chart)
+                    .style_func(|_, y| if *y >= 0.0 { GREEN.filled() } else { RED.filled() })
+                    .margin(20)
+                    .data(changes.iter().enumerate().map(|(i, v)| (i, *v))),
+            )
+            .map_err(plot_err)?;
 
-    chart
-        .draw_series(LineSeries::new(
-            vec![
-                (SegmentValue::Exact(0), 0.0),
-                (SegmentValue::Exact(all_stats.len()), 0.0),
-            ],
-            BLACK.stroke_width(1),
-        ))
-        .map_err(plot_err)?;
+        chart
+            .draw_series(LineSeries::new(
+                vec![
+                    (SegmentValue::Exact(0), 0.0),
+                    (SegmentValue::Exact(all_stats.len()), 0.0),
+                ],
+                BLACK.stroke_width(1),
+            ))
+            .map_err(plot_err)?;
 
-    root.present().map_err(plot_err)?;
+        root.present().map_err(plot_err)?;
+    }
 
-    println!("Performance chart saved to: {}", output_path);
+    open_image_bytes(svg.as_bytes(), "svg")?;
 
     Ok(())
 }
@@ -376,8 +377,6 @@ async fn plot_performance() -> Result<()> {
 #[cell]
 async fn plot_risk_return() -> Result<()> {
     let all_stats: Vec<StockStats> = load!(all_stats)?;
-
-    let output_path = concat!(env!("CARGO_MANIFEST_DIR"), "/output/risk_return.svg");
 
     let volatilities: Vec<f64> = all_stats.iter().map(|s| s.volatility).collect();
     let returns: Vec<f64> = all_stats.iter().map(|s| s.price_change_pct).collect();
@@ -387,53 +386,56 @@ async fn plot_risk_return() -> Result<()> {
     let y_min = returns.iter().cloned().fold(f64::INFINITY, f64::min) * 0.8;
     let y_max = returns.iter().cloned().fold(f64::NEG_INFINITY, f64::max) * 1.2;
 
-    let root = SVGBackend::new(output_path, (600, 500)).into_drawing_area();
-    root.fill(&WHITE).map_err(plot_err)?;
+    let mut svg = String::new();
+    {
+        let root = SVGBackend::with_string(&mut svg, (600, 500)).into_drawing_area();
+        root.fill(&WHITE).map_err(plot_err)?;
 
-    let mut chart = ChartBuilder::on(&root)
-        .caption("Risk vs Return", ("sans-serif", 24).into_font())
-        .margin(10)
-        .x_label_area_size(40)
-        .y_label_area_size(60)
-        .build_cartesian_2d(x_min..x_max, y_min..y_max)
-        .map_err(plot_err)?;
-
-    chart
-        .configure_mesh()
-        .x_desc("Volatility (%)")
-        .y_desc("Return (%)")
-        .x_label_formatter(&|x| format!("{:.1}%", x))
-        .y_label_formatter(&|y| format!("{:+.1}%", y))
-        .draw()
-        .map_err(plot_err)?;
-
-    let colors = [RED, BLUE, GREEN];
-
-    for (i, stats) in all_stats.iter().enumerate() {
-        let color = colors[i % colors.len()];
-
-        chart
-            .draw_series(std::iter::once(Circle::new(
-                (stats.volatility, stats.price_change_pct),
-                8,
-                color.filled(),
-            )))
+        let mut chart = ChartBuilder::on(&root)
+            .caption("Risk vs Return", ("sans-serif", 24).into_font())
+            .margin(10)
+            .x_label_area_size(40)
+            .y_label_area_size(60)
+            .build_cartesian_2d(x_min..x_max, y_min..y_max)
             .map_err(plot_err)?;
 
         chart
-            .draw_series(std::iter::once(Text::new(
-                stats.symbol.clone(),
-                (stats.volatility + 0.05, stats.price_change_pct + 0.2),
-                ("sans-serif", 14).into_font(),
-            )))
+            .configure_mesh()
+            .x_desc("Volatility (%)")
+            .y_desc("Return (%)")
+            .x_label_formatter(&|x| format!("{:.1}%", x))
+            .y_label_formatter(&|y| format!("{:+.1}%", y))
+            .draw()
             .map_err(plot_err)?;
+
+        let colors = [RED, BLUE, GREEN];
+
+        for (i, stats) in all_stats.iter().enumerate() {
+            let color = colors[i % colors.len()];
+
+            chart
+                .draw_series(std::iter::once(Circle::new(
+                    (stats.volatility, stats.price_change_pct),
+                    8,
+                    color.filled(),
+                )))
+                .map_err(plot_err)?;
+
+            chart
+                .draw_series(std::iter::once(Text::new(
+                    stats.symbol.clone(),
+                    (stats.volatility + 0.05, stats.price_change_pct + 0.2),
+                    ("sans-serif", 14).into_font(),
+                )))
+                .map_err(plot_err)?;
+        }
+
+        root.present().map_err(plot_err)?;
     }
 
-    root.present().map_err(plot_err)?;
+    open_image_bytes(svg.as_bytes(), "svg")?;
 
-    println!("Risk-return scatter plot saved to: {}", output_path);
-
-    println!("\nRisk-Return Analysis:");
+    println!("Risk-Return Analysis:");
     for s in &all_stats {
         println!(
             "  {}: {:.2}% volatility, {:+.2}% return",
@@ -480,73 +482,74 @@ async fn calculate_returns() -> Result<()> {
 async fn plot_returns() -> Result<()> {
     let all_returns: Vec<DailyReturns> = load!(all_returns)?;
 
-    let output_path = concat!(env!("CARGO_MANIFEST_DIR"), "/output/returns_distribution.svg");
-
     let bin_width = 0.5;
     let all_values: Vec<f64> = all_returns.iter().flat_map(|r| r.returns.clone()).collect();
     let min_val = (all_values.iter().cloned().fold(f64::INFINITY, f64::min) / bin_width).floor() * bin_width;
     let max_val =
         (all_values.iter().cloned().fold(f64::NEG_INFINITY, f64::max) / bin_width).ceil() * bin_width;
 
-    let root = SVGBackend::new(output_path, (800, 500)).into_drawing_area();
-    root.fill(&WHITE).map_err(plot_err)?;
+    let mut svg = String::new();
+    {
+        let root = SVGBackend::with_string(&mut svg, (800, 500)).into_drawing_area();
+        root.fill(&WHITE).map_err(plot_err)?;
 
-    let mut chart = ChartBuilder::on(&root)
-        .caption("Daily Returns Distribution", ("sans-serif", 24).into_font())
-        .margin(10)
-        .x_label_area_size(40)
-        .y_label_area_size(50)
-        .build_cartesian_2d(min_val..max_val, 0u32..10u32)
-        .map_err(plot_err)?;
+        let mut chart = ChartBuilder::on(&root)
+            .caption("Daily Returns Distribution", ("sans-serif", 24).into_font())
+            .margin(10)
+            .x_label_area_size(40)
+            .y_label_area_size(50)
+            .build_cartesian_2d(min_val..max_val, 0u32..10u32)
+            .map_err(plot_err)?;
 
-    chart
-        .configure_mesh()
-        .x_desc("Daily Return (%)")
-        .y_desc("Frequency")
-        .x_label_formatter(&|x| format!("{:.1}%", x))
-        .draw()
-        .map_err(plot_err)?;
+        chart
+            .configure_mesh()
+            .x_desc("Daily Return (%)")
+            .y_desc("Frequency")
+            .x_label_formatter(&|x| format!("{:.1}%", x))
+            .draw()
+            .map_err(plot_err)?;
 
-    let colors = [RED, BLUE, GREEN];
+        let colors = [RED, BLUE, GREEN];
 
-    for (i, dr) in all_returns.iter().enumerate() {
-        let color = colors[i % colors.len()];
+        for (i, dr) in all_returns.iter().enumerate() {
+            let color = colors[i % colors.len()];
 
-        let mut bins: std::collections::HashMap<i32, u32> = std::collections::HashMap::new();
-        for r in &dr.returns {
-            let bin = (r / bin_width).round() as i32;
-            *bins.entry(bin).or_insert(0) += 1;
+            let mut bins: std::collections::HashMap<i32, u32> = std::collections::HashMap::new();
+            for r in &dr.returns {
+                let bin = (r / bin_width).round() as i32;
+                *bins.entry(bin).or_insert(0) += 1;
+            }
+
+            let data: Vec<(f64, u32)> = bins
+                .into_iter()
+                .map(|(bin, count)| (bin as f64 * bin_width, count))
+                .collect();
+
+            chart
+                .draw_series(data.iter().map(|(x, y)| Circle::new((*x, *y), 5, color.filled())))
+                .map_err(plot_err)?
+                .label(&dr.symbol)
+                .legend(move |(x, y)| Circle::new((x + 10, y), 5, color.filled()));
+
+            let mut sorted_data = data.clone();
+            sorted_data.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+            chart
+                .draw_series(LineSeries::new(sorted_data, color.stroke_width(1)))
+                .map_err(plot_err)?;
         }
 
-        let data: Vec<(f64, u32)> = bins
-            .into_iter()
-            .map(|(bin, count)| (bin as f64 * bin_width, count))
-            .collect();
-
         chart
-            .draw_series(data.iter().map(|(x, y)| Circle::new((*x, *y), 5, color.filled())))
-            .map_err(plot_err)?
-            .label(&dr.symbol)
-            .legend(move |(x, y)| Circle::new((x + 10, y), 5, color.filled()));
-
-        let mut sorted_data = data.clone();
-        sorted_data.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-        chart
-            .draw_series(LineSeries::new(sorted_data, color.stroke_width(1)))
+            .configure_series_labels()
+            .background_style(WHITE.mix(0.8))
+            .border_style(BLACK)
+            .position(SeriesLabelPosition::UpperRight)
+            .draw()
             .map_err(plot_err)?;
+
+        root.present().map_err(plot_err)?;
     }
 
-    chart
-        .configure_series_labels()
-        .background_style(WHITE.mix(0.8))
-        .border_style(BLACK)
-        .position(SeriesLabelPosition::UpperRight)
-        .draw()
-        .map_err(plot_err)?;
-
-    root.present().map_err(plot_err)?;
-
-    println!("Returns distribution saved to: {}", output_path);
+    open_image_bytes(svg.as_bytes(), "svg")?;
 
     Ok(())
 }
@@ -596,13 +599,6 @@ async fn summary() -> Result<()> {
     }
 
     println!("+--------------------------------------------------------------------+");
-
-    println!("\nGenerated plots (open in browser):");
-    println!("  - output/price_history.svg");
-    println!("  - output/volume_comparison.svg");
-    println!("  - output/performance.svg");
-    println!("  - output/risk_return.svg");
-    println!("  - output/returns_distribution.svg");
 
     Ok(())
 }

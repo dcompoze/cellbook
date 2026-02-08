@@ -4,8 +4,6 @@
 
 Dynamic computational notebook environment in plain Rust.
 
-<div align="center"><img src="https://raw.githubusercontent.com/dcompoze/cellbook/main/screenshot.png" width="100%"></div>
-
 - Cells are defined as `async` functions with `#[cell]` macro annotations
 
 - Cells are compiled as a `dylib` crate and dynamically reloaded on changes
@@ -137,3 +135,13 @@ navigate_up = ["Up", "k"]
 Keybindings can be a single key or an array of alternative keys.
 
 Supported key names include single characters and `Enter`, `Esc`, `Tab`, `Space`, `Backspace`, `Delete`, `Up`, `Down`, `Left`, `Right`, `Home`, `End`, `PageUp`, `PageDown`, `F1`, etc.
+
+## Interface
+
+The `cargo cellbook run` command opens the terminal-based cellbook runner interface:
+
+<div align="center"><img src="https://raw.githubusercontent.com/dcompoze/cellbook/main/screenshot.png" width="100%"></div>
+
+It allows running/editing/reloading cells, inspecting cell output, viewing images and more.
+
+It also shows what types are stored in the shared context store.

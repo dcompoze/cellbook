@@ -33,6 +33,18 @@ pub async fn run(lib: &mut LoadedLibrary, event_rx: mpsc::Receiver<TuiEvent>) ->
     config::ensure_config_exists();
     let tui_config = config::load();
 
+    // Set image viewer env var for cells to use.
+    // Global config takes precedence over notebook config.
+    let image_viewer = tui_config
+        .general
+        .image_viewer
+        .as_ref()
+        .or(lib.config().image_viewer.as_ref());
+    if let Some(viewer) = image_viewer {
+        // SAFETY: Called once at startup before cells run.
+        unsafe { std::env::set_var("CELLBOOK_IMAGE_VIEWER", viewer) };
+    }
+
     let cells: Vec<String> = lib.cells().iter().map(|c| c.name.clone()).collect();
     let mut app = App::new(cells, lib.config().show_timings);
     app.refresh_context(store::list());

@@ -9,7 +9,15 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct TuiConfig {
+    pub general: GeneralConfig,
     pub keybindings: Keybindings,
+}
+
+/// General settings.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct GeneralConfig {
+    pub image_viewer: Option<String>,
 }
 
 /// Keybinding configuration.

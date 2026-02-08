@@ -9,6 +9,7 @@
 pub mod config;
 pub mod context;
 pub mod errors;
+pub mod image;
 mod macros;
 pub mod registry;
 pub mod test;
@@ -18,6 +19,7 @@ pub use config::Config;
 pub use context::CellContext;
 pub use errors::{ContextError, Error, Result};
 pub use futures;
+pub use image::{open_image, open_image_bytes};
 pub use inventory;
 pub use registry::CellInfo;
 pub use serde;
