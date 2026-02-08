@@ -1,14 +1,10 @@
-//! Cellbook - A computational notebook environment for Rust.
+//! Cellbook core library.
 //!
-//! This crate provides the user-facing API for cellbook projects.
-//! The actual runtime lives in cargo-cellbook.
+//! Provides the user-facing API for cellbook projects.
+//! The runtime lives in `cargo-cellbook`.
 //!
-//! # Serialization
-//!
-//! Values stored in the context are serialized with postcard. This means:
-//! - Stored types must implement `Serialize`
-//! - Loaded types must implement `DeserializeOwned`
-//! - Values survive hot-reloads because they're stored as bytes, not as Rust types
+//! Values in the context store are serialized with postcard.
+//! Stored types must implement `Serialize` and loaded types must implement `DeserializeOwned`.
 
 pub mod config;
 pub mod context;

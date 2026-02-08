@@ -1,21 +1,14 @@
-//! Stock price analysis example
-//!
-//! Demonstrates a complete timeseries analysis workflow:
-//! - Loading CSV data with Polars
-//! - Computing statistics and metrics
-//! - Generating plots with Plotters
+//! Stock price analysis example.
 
 use cellbook::{cell, cellbook, load, store, Config, Result};
 use plotters::prelude::*;
 use polars::prelude::*;
 use serde::{Deserialize, Serialize};
 
-/// Helper to convert plotters errors to io::Error
 fn plot_err<E: std::fmt::Debug>(e: E) -> std::io::Error {
     std::io::Error::other(format!("{:?}", e))
 }
 
-/// Summary statistics for a stock
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct StockStats {
     symbol: String,
@@ -28,7 +21,6 @@ struct StockStats {
     price_change_pct: f64,
 }
 
-/// Price data for a single stock
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct StockPrices {
     symbol: String,
@@ -37,7 +29,6 @@ struct StockPrices {
     volumes: Vec<i64>,
 }
 
-/// Daily returns for analysis
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct DailyReturns {
     symbol: String,
@@ -64,7 +55,6 @@ async fn load_data() -> Result<()> {
     println!("\nFirst 5 rows:");
     println!("{}", df.head(Some(5)));
 
-    // Get unique symbols
     let symbols: Vec<String> = df
         .column("symbol")
         .map_err(|e| std::io::Error::other(e.to_string()))?
@@ -78,7 +68,6 @@ async fn load_data() -> Result<()> {
 
     println!("\nSymbols: {:?}", symbols);
 
-    // Extract price data for each symbol
     let mut all_prices = Vec::new();
 
     for symbol in &symbols {
@@ -145,13 +134,12 @@ async fn compute_stats() -> Result<()> {
         let min_close = closes.iter().cloned().fold(f64::INFINITY, f64::min);
         let max_close = closes.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
 
-        // Calculate volatility (standard deviation of daily returns)
+        // Volatility: standard deviation of daily returns.
         let returns: Vec<f64> = closes.windows(2).map(|w| (w[1] - w[0]) / w[0] * 100.0).collect();
         let mean_return = returns.iter().sum::<f64>() / returns.len() as f64;
         let variance = returns.iter().map(|r| (r - mean_return).powi(2)).sum::<f64>() / returns.len() as f64;
         let volatility = variance.sqrt();
 
-        // Price change from first to last
         let price_change_pct =
             (closes.last().unwrap() - closes.first().unwrap()) / closes.first().unwrap() * 100.0;
 
@@ -193,7 +181,6 @@ async fn plot_prices() -> Result<()> {
     std::fs::create_dir_all(output_dir)?;
     let output_path = concat!(env!("CARGO_MANIFEST_DIR"), "/output/price_history.svg");
 
-    // Find global min/max for y-axis
     let all_closes: Vec<f64> = all_prices.iter().flat_map(|p| p.closes.clone()).collect();
     let y_min = all_closes.iter().cloned().fold(f64::INFINITY, f64::min) * 0.95;
     let y_max = all_closes.iter().cloned().fold(f64::NEG_INFINITY, f64::max) * 1.05;
@@ -218,7 +205,7 @@ async fn plot_prices() -> Result<()> {
         .y_labels(10)
         .x_label_formatter(&|x| {
             if *x < dates.len() {
-                dates[*x][5..10].to_string() // MM-DD
+                dates[*x][5..10].to_string()
             } else {
                 String::new()
             }
@@ -317,7 +304,6 @@ async fn plot_volume() -> Result<()> {
 
     println!("Volume comparison saved to: {}", output_path);
 
-    // Print summary
     println!("\nVolume Summary:");
     for (i, s) in all_stats.iter().enumerate() {
         println!("  {}: {:.2}M shares/day avg", s.symbol, avg_volumes[i]);
@@ -370,7 +356,6 @@ async fn plot_performance() -> Result<()> {
         )
         .map_err(plot_err)?;
 
-    // Draw zero line
     chart
         .draw_series(LineSeries::new(
             vec![
@@ -427,7 +412,6 @@ async fn plot_risk_return() -> Result<()> {
     for (i, stats) in all_stats.iter().enumerate() {
         let color = colors[i % colors.len()];
 
-        // Draw point
         chart
             .draw_series(std::iter::once(Circle::new(
                 (stats.volatility, stats.price_change_pct),
@@ -436,7 +420,6 @@ async fn plot_risk_return() -> Result<()> {
             )))
             .map_err(plot_err)?;
 
-        // Draw label
         chart
             .draw_series(std::iter::once(Text::new(
                 stats.symbol.clone(),
@@ -450,7 +433,6 @@ async fn plot_risk_return() -> Result<()> {
 
     println!("Risk-return scatter plot saved to: {}", output_path);
 
-    // Print summary
     println!("\nRisk-Return Analysis:");
     for s in &all_stats {
         println!(
@@ -500,7 +482,6 @@ async fn plot_returns() -> Result<()> {
 
     let output_path = concat!(env!("CARGO_MANIFEST_DIR"), "/output/returns_distribution.svg");
 
-    // Compute histogram bins for all stocks
     let bin_width = 0.5;
     let all_values: Vec<f64> = all_returns.iter().flat_map(|r| r.returns.clone()).collect();
     let min_val = (all_values.iter().cloned().fold(f64::INFINITY, f64::min) / bin_width).floor() * bin_width;
@@ -531,7 +512,6 @@ async fn plot_returns() -> Result<()> {
     for (i, dr) in all_returns.iter().enumerate() {
         let color = colors[i % colors.len()];
 
-        // Create histogram data
         let mut bins: std::collections::HashMap<i32, u32> = std::collections::HashMap::new();
         for r in &dr.returns {
             let bin = (r / bin_width).round() as i32;
@@ -549,7 +529,6 @@ async fn plot_returns() -> Result<()> {
             .label(&dr.symbol)
             .legend(move |(x, y)| Circle::new((x + 10, y), 5, color.filled()));
 
-        // Connect points with lines
         let mut sorted_data = data.clone();
         sorted_data.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
         chart
@@ -576,11 +555,10 @@ async fn plot_returns() -> Result<()> {
 async fn summary() -> Result<()> {
     let all_stats: Vec<StockStats> = load!(all_stats)?;
 
-    println!("╔══════════════════════════════════════════════════════════════════╗");
-    println!("║                    STOCK ANALYSIS SUMMARY                        ║");
-    println!("╠══════════════════════════════════════════════════════════════════╣");
+    println!("+--------------------------------------------------------------------+");
+    println!("|                    STOCK ANALYSIS SUMMARY                          |");
+    println!("+--------------------------------------------------------------------+");
 
-    // Find best and worst performers
     let best = all_stats
         .iter()
         .max_by(|a, b| a.price_change_pct.partial_cmp(&b.price_change_pct).unwrap())
@@ -595,29 +573,29 @@ async fn summary() -> Result<()> {
         .unwrap();
 
     println!(
-        "║  Best Performer:    {:5} ({:+.2}%)                            ║",
+        "|  Best Performer:    {:5} ({:+.2}%)                              |",
         best.symbol, best.price_change_pct
     );
     println!(
-        "║  Worst Performer:   {:5} ({:+.2}%)                            ║",
+        "|  Worst Performer:   {:5} ({:+.2}%)                              |",
         worst.symbol, worst.price_change_pct
     );
     println!(
-        "║  Lowest Volatility: {:5} ({:.2}%)                             ║",
+        "|  Lowest Volatility: {:5} ({:.2}%)                               |",
         lowest_vol.symbol, lowest_vol.volatility
     );
-    println!("╠══════════════════════════════════════════════════════════════════╣");
-    println!("║  Symbol  │  Close Avg  │  Change  │  Volatility  │   Volume     ║");
-    println!("╠══════════════════════════════════════════════════════════════════╣");
+    println!("+--------------------------------------------------------------------+");
+    println!("|  Symbol  |  Close Avg  |  Change  |  Volatility  |   Volume       |");
+    println!("+--------------------------------------------------------------------+");
 
     for s in &all_stats {
         println!(
-            "║  {:5}   │  ${:>8.2} │ {:>+6.2}%  │    {:>5.2}%    │ {:>11}  ║",
+            "|  {:5}   |  ${:>8.2} | {:>+6.2}%  |    {:>5.2}%    | {:>13}  |",
             s.symbol, s.mean_close, s.price_change_pct, s.volatility, s.total_volume
         );
     }
 
-    println!("╚══════════════════════════════════════════════════════════════════╝");
+    println!("+--------------------------------------------------------------------+");
 
     println!("\nGenerated plots (open in browser):");
     println!("  - output/price_history.svg");

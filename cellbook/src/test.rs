@@ -1,23 +1,12 @@
 //! Test utilities for cellbook.
 //!
-//! Provides an in-memory store for testing cells without cargo-cellbook.
-//! Each test should create its own `TestContext` with a unique prefix to
-//! ensure isolation when tests run in parallel or sequentially on the same thread.
-//!
-//! # Example
+//! Provides an in-memory store for testing cells without `cargo-cellbook`.
 //!
 //! ```ignore
-//! #[cfg(test)]
-//! mod tests {
-//!     use super::*;
-//!     use cellbook::test::TestContext;
-//!
-//!     #[tokio::test]
-//!     async fn test_my_cell() {
-//!         let ctx = TestContext::default();
-//!         my_cell(&ctx).await.unwrap();
-//!         // Store is automatically cleaned up when ctx is dropped
-//!     }
+//! #[tokio::test]
+//! async fn test_my_cell() {
+//!     let ctx = TestContext::default();
+//!     my_cell(&ctx).await.unwrap();
 //! }
 //! ```
 
@@ -32,15 +21,12 @@ use crate::CellContext;
 
 type StoredValue = (Vec<u8>, String);
 
-/// Global test store shared across all tests.
 static TEST_STORE: LazyLock<Mutex<HashMap<String, StoredValue>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-/// Counter for auto-generating unique prefixes.
 static PREFIX_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 thread_local! {
-    /// Current prefix for this thread. Set by TestContext, read by store/load functions.
     static CURRENT_PREFIX: RefCell<String> = const { RefCell::new(String::new()) };
 }
 
@@ -73,23 +59,15 @@ fn list() -> Vec<(String, String)> {
         .collect()
 }
 
-/// A test context that provides isolated storage for a single test.
+/// Test context providing isolated storage for a single test.
 ///
-/// When created, sets a prefix that is automatically prepended to all keys.
-/// When dropped, cleans up all keys with that prefix from the global store.
-///
-/// # Example
+/// Keys are automatically prefixed for isolation.
+/// Storage is cleaned up when the context is dropped.
 ///
 /// ```ignore
-/// #[tokio::test]
-/// async fn test_load_data() {
-///     let ctx = TestContext::default();
-///     load_data(&ctx).await.unwrap();
-///
-///     // Can also access the underlying CellContext directly
-///     let data: Vec<f64> = ctx.load("data").unwrap();
-///     assert_eq!(data.len(), 5);
-/// }
+/// let ctx = TestContext::default();
+/// my_cell(&ctx).await.unwrap();
+/// let data: Vec<f64> = ctx.load("data").unwrap();
 /// ```
 pub struct TestContext {
     prefix: String,
@@ -97,10 +75,7 @@ pub struct TestContext {
 }
 
 impl TestContext {
-    /// Create a new test context with the given prefix.
-    ///
-    /// The prefix should be unique per test to ensure isolation.
-    /// A common pattern is to use the test function name.
+    /// Create a test context with a custom prefix.
     pub fn new(prefix: impl Into<String>) -> Self {
         let prefix = prefix.into();
         CURRENT_PREFIX.with(|p| *p.borrow_mut() = prefix.clone());
@@ -112,7 +87,6 @@ impl TestContext {
 }
 
 impl Default for TestContext {
-    /// Create a new test context with an auto-generated unique prefix.
     fn default() -> Self {
         let n = PREFIX_COUNTER.fetch_add(1, Ordering::SeqCst);
         Self::new(format!("_test_{n}"))
@@ -129,11 +103,8 @@ impl std::ops::Deref for TestContext {
 
 impl Drop for TestContext {
     fn drop(&mut self) {
-        // Clear only keys with this prefix
         let prefix_with_sep = format!("{}:", self.prefix);
         TEST_STORE.lock().retain(|k, _| !k.starts_with(&prefix_with_sep));
-
-        // Reset the thread-local prefix
         CURRENT_PREFIX.with(|p| p.borrow_mut().clear());
     }
 }

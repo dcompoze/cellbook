@@ -1,15 +1,11 @@
-/// Store a value in the context using the variable name as key.
+/// Store a value in the context.
 ///
-/// The value must implement `Serialize`. It is serialized with postcard.
-/// The `ctx` parameter is the CellContext handle injected by the `#[cell]` macro.
-///
-/// # Examples
+/// Uses the variable name as the key.
+/// Requires `Serialize`.
 ///
 /// ```ignore
-/// let data = vec![1, 2, 3];
-/// store!(data);  // stores with key "data"
-///
-/// store!(my_key = some_value);  // stores with key "my_key"
+/// store!(data);
+/// store!(my_key = some_value);
 /// ```
 #[macro_export]
 macro_rules! store {
@@ -23,16 +19,11 @@ macro_rules! store {
 
 /// Load a value from the context.
 ///
-/// The type must implement `DeserializeOwned`. Returns `Result<T>`.
-/// The `ctx` parameter is the CellContext handle injected by the `#[cell]` macro.
-///
-/// # Examples
+/// Requires `DeserializeOwned`.
+/// Returns `Result<T>`.
 ///
 /// ```ignore
-/// // Explicit type in macro
 /// let data = load!(data as Vec<i32>)?;
-///
-/// // Type inferred from annotation
 /// let data: Vec<i32> = load!(data)?;
 /// ```
 #[macro_export]
@@ -48,12 +39,9 @@ macro_rules! load {
 /// Remove a value from the context.
 ///
 /// Returns `true` if the key existed.
-/// The `ctx` parameter is the CellContext handle injected by the `#[cell]` macro.
-///
-/// # Examples
 ///
 /// ```ignore
-/// remove!(temp_data);  // removes "temp_data" from context
+/// remove!(temp_data);
 /// ```
 #[macro_export]
 macro_rules! remove {
@@ -62,21 +50,14 @@ macro_rules! remove {
     };
 }
 
-/// Load and remove a value from the context in one operation.
+/// Load and remove a value in one operation.
 ///
-/// The type must implement `DeserializeOwned`. Returns `Result<T>`.
-/// This is useful when you want to transfer ownership of a value.
-/// The `ctx` parameter is the CellContext handle injected by the `#[cell]` macro.
-///
-/// # Examples
+/// Requires `DeserializeOwned`.
+/// Returns `Result<T>`.
 ///
 /// ```ignore
-/// // Explicit type in macro
 /// let data = consume!(temp_data as Vec<i32>)?;
-///
-/// // Type inferred from annotation
 /// let data: Vec<i32> = consume!(temp_data)?;
-/// // temp_data is now removed from context
 /// ```
 #[macro_export]
 macro_rules! consume {

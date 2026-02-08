@@ -3,7 +3,7 @@ use quote::{format_ident, quote};
 use syn::visit_mut::VisitMut;
 use syn::{parse_macro_input, FnArg, ItemFn};
 
-/// Visitor that adds `ctx` prefix to store!, load!, remove!, consume! macro calls
+/// Adds `ctx` prefix to context macro calls.
 struct CtxInjector;
 
 impl VisitMut for CtxInjector {
@@ -15,27 +15,23 @@ impl VisitMut for CtxInjector {
             || path.is_ident("consume");
 
         if is_context_macro {
-            // Prepend `ctx, ` to the macro tokens
             let tokens = &mac.tokens;
             mac.tokens = quote! { ctx, #tokens };
         }
     }
 }
 
-/// Marks an async function as a cellbook cell and registers it automatically.
+/// Marks an async function as a cellbook cell.
 ///
-/// The macro transforms the function to:
-/// 1. Accept a `ctx: CellContext` parameter
-/// 2. Generate a `#[no_mangle]` wrapper for FFI
-/// 3. Register the cell with inventory for automatic discovery
-///
-/// # Example
+/// The macro:
+/// - Adds a `ctx: CellContext` parameter
+/// - Generates a `#[no_mangle]` wrapper for FFI
+/// - Registers the cell with inventory
 ///
 /// ```ignore
 /// #[cell]
 /// async fn my_cell() -> Result<()> {
-///     let data = vec![1, 2, 3];
-///     store!(data)?;  // ctx is automatically available
+///     store!(data)?;
 ///     Ok(())
 /// }
 /// ```
@@ -43,20 +39,16 @@ impl VisitMut for CtxInjector {
 pub fn cell(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut input = parse_macro_input!(item as ItemFn);
 
-    // Get name and line before mutable borrow
     let fn_name = input.sig.ident.clone();
     let fn_name_str = fn_name.to_string();
     let wrapper_name = format_ident!("__cellbook_cell_{}", fn_name_str);
     let line = fn_name.span().start().line as u32;
 
-    // Transform store!/load!/remove!/consume! calls to include ctx
     CtxInjector.visit_item_fn_mut(&mut input);
 
-    // Add ctx parameter to the function signature
     let ctx_param: FnArg = syn::parse_quote!(ctx: &::cellbook::CellContext);
     input.sig.inputs.insert(0, ctx_param);
 
-    // Extract the function body and other parts
     let fn_vis = &input.vis;
     let fn_sig = &input.sig;
     let fn_block = &input.block;
@@ -90,37 +82,16 @@ pub fn cell(_attr: TokenStream, item: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-/// Generates the cell discovery and config functions for the dylib.
+/// Generates cell discovery and config exports for the dylib.
 ///
-/// Call this macro once at the end of your cellbook.rs to export all registered cells.
-/// Optionally pass a `Config` to customize behavior.
-///
-/// # Examples
+/// Call once at the end of `cellbook.rs`.
 ///
 /// ```ignore
-/// #[cell]
-/// async fn hello() -> Result<()> { Ok(()) }
-///
-/// #[cell]
-/// async fn world() -> Result<()> { Ok(()) }
-///
-/// // Using defaults
 /// cellbook!();
-///
-/// // Using struct literal
-/// cellbook!(Config {
-///     auto_reload: false,
-///     ..Default::default()
-/// });
-///
-/// // Using builder methods
-/// cellbook!(Config::default()
-///     .auto_reload(false)
-///     .image_viewer("feh"));
+/// cellbook!(Config::default().auto_reload(false));
 /// ```
 #[proc_macro]
 pub fn cellbook(input: TokenStream) -> TokenStream {
-    // Parse optional config expression
     let config_expr = if input.is_empty() {
         quote! { ::cellbook::Config::default() }
     } else {

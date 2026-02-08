@@ -1,14 +1,12 @@
 //! Context store for sharing data between cells.
 //!
-//! Values are stored as serialized bytes, which allows them to survive
-//! hot-reloads where TypeIds change across recompilation.
+//! Values are stored as serialized bytes to survive hot-reloads.
 
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
 use parking_lot::Mutex;
 
-/// A stored value as serialized bytes
 struct StoredValue {
     bytes: Vec<u8>,
     type_name: String,
@@ -17,7 +15,6 @@ struct StoredValue {
 static STORE: LazyLock<Mutex<HashMap<String, StoredValue>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-/// Store a serialized value in the context.
 pub fn store_value(key: &str, bytes: Vec<u8>, type_name: &str) {
     let mut store = STORE.lock();
     store.insert(
@@ -29,21 +26,16 @@ pub fn store_value(key: &str, bytes: Vec<u8>, type_name: &str) {
     );
 }
 
-/// Load a serialized value from the context.
-/// Returns the bytes and type name, or None if not found.
 pub fn load_value(key: &str) -> Option<(Vec<u8>, String)> {
     let store = STORE.lock();
     store.get(key).map(|v| (v.bytes.clone(), v.type_name.clone()))
 }
 
-/// Remove a value from the context.
-/// Returns the bytes and type name if the key existed.
 pub fn remove_value(key: &str) -> Option<(Vec<u8>, String)> {
     let mut store = STORE.lock();
     store.remove(key).map(|v| (v.bytes, v.type_name))
 }
 
-/// List all keys and their type names in the context.
 pub fn list() -> Vec<(String, String)> {
     let store = STORE.lock();
     store
@@ -52,42 +44,28 @@ pub fn list() -> Vec<(String, String)> {
         .collect()
 }
 
-/// Clear all values from the context.
 pub fn clear() {
     let mut store = STORE.lock();
     store.clear();
 }
 
-// FFI-compatible function pointers for CellContext
-
-/// Store function pointer type for FFI
 pub type StoreFn = fn(&str, Vec<u8>, &str);
-
-/// Load function pointer type for FFI
 pub type LoadFn = fn(&str) -> Option<(Vec<u8>, String)>;
-
-/// Remove function pointer type for FFI
 pub type RemoveFn = fn(&str) -> Option<(Vec<u8>, String)>;
-
-/// List function pointer type for FFI
 pub type ListFn = fn() -> Vec<(String, String)>;
 
-/// Get the store function pointer for FFI
 pub fn get_store_fn() -> StoreFn {
     store_value
 }
 
-/// Get the load function pointer for FFI
 pub fn get_load_fn() -> LoadFn {
     load_value
 }
 
-/// Get the remove function pointer for FFI
 pub fn get_remove_fn() -> RemoveFn {
     remove_value
 }
 
-/// Get the list function pointer for FFI
 pub fn get_list_fn() -> ListFn {
     list
 }

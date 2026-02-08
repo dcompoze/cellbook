@@ -1,6 +1,4 @@
 //! TUI runner for cellbook.
-//!
-//! Provides an interactive loop for running cells and viewing context.
 
 use std::io::{BufRead, Write};
 
@@ -10,24 +8,18 @@ use crate::errors::Result;
 use crate::loader::LoadedLibrary;
 use crate::store;
 
-/// Events that can occur during the TUI loop
 pub enum TuiEvent {
-    /// Library was reloaded
     Reloaded,
-    /// Build started
     BuildStarted,
-    /// Build completed (with optional error message)
     BuildCompleted(Option<String>),
 }
 
-/// Run the interactive TUI loop.
 pub async fn run_tui(
     lib: &mut LoadedLibrary,
     mut event_rx: mpsc::Receiver<TuiEvent>,
 ) -> Result<()> {
     print_header(lib);
 
-    // Spawn a blocking task to read stdin lines and send them through a channel
     let (input_tx, mut input_rx) = mpsc::channel::<String>(32);
     std::thread::spawn(move || {
         let stdin = std::io::stdin();
@@ -36,7 +28,6 @@ pub async fn run_tui(
             match line {
                 Ok(line) => {
                     if input_tx.blocking_send(line).is_err() {
-                        // Receiver dropped, exit
                         break;
                     }
                 }
@@ -52,7 +43,6 @@ pub async fn run_tui(
         tokio::select! {
             biased;
 
-            // Handle TUI events (reload notifications, build status)
             event = event_rx.recv() => {
                 match event {
                     Some(TuiEvent::Reloaded) => {
@@ -83,13 +73,11 @@ pub async fn run_tui(
                         std::io::stdout().flush()?;
                     }
                     None => {
-                        // Event channel closed
                         break;
                     }
                 }
             }
 
-            // Handle user input
             input = input_rx.recv() => {
                 match input {
                     Some(line) => {
@@ -126,7 +114,6 @@ pub async fn run_tui(
                         std::io::stdout().flush()?;
                     }
                     None => {
-                        // Input channel closed (stdin EOF)
                         break;
                     }
                 }

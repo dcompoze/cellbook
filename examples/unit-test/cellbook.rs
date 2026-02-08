@@ -1,4 +1,4 @@
-//! Example showing how to unit test cellbook cells.
+//! Unit testing example for cellbook cells.
 
 use cellbook::{cell, cellbook, load, store, Config, Result};
 use serde::{Deserialize, Serialize};
@@ -54,7 +54,6 @@ mod tests {
 
         load_data(&ctx).await.unwrap();
 
-        // Verify data was stored
         let data: Vec<f64> = ctx.load("data").unwrap();
         assert_eq!(data, vec![1.0, 2.0, 3.0, 4.0, 5.0]);
     }
@@ -62,14 +61,10 @@ mod tests {
     #[tokio::test]
     async fn test_compute_stats() {
         let ctx = TestContext::default();
-
-        // Setup: store test data
         ctx.store("data", &vec![10.0, 20.0, 30.0]).unwrap();
 
-        // Run the cell
         compute_stats(&ctx).await.unwrap();
 
-        // Verify stats were computed correctly
         let stats: Stats = ctx.load("stats").unwrap();
         assert_eq!(stats.count, 3);
         assert_eq!(stats.sum, 60.0);
@@ -80,11 +75,9 @@ mod tests {
     async fn test_full_pipeline() {
         let ctx = TestContext::default();
 
-        // Run cells in sequence
         load_data(&ctx).await.unwrap();
         compute_stats(&ctx).await.unwrap();
 
-        // Verify final state
         let stats: Stats = ctx.load("stats").unwrap();
         assert_eq!(stats.count, 5);
         assert_eq!(stats.sum, 15.0);
@@ -95,7 +88,6 @@ mod tests {
     async fn test_missing_data_error() {
         let ctx = TestContext::default();
 
-        // compute_stats should fail if data is missing
         let result = compute_stats(&ctx).await;
         assert!(result.is_err());
     }
