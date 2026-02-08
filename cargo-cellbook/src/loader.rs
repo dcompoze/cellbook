@@ -25,9 +25,7 @@ pub struct Config {
     pub auto_reload: bool,
     pub debounce_ms: u32,
     pub image_viewer: Option<String>,
-    pub plot_viewer: Option<String>,
     pub show_timings: bool,
-    pub clear_on_run: bool,
 }
 
 impl Default for Config {
@@ -36,9 +34,7 @@ impl Default for Config {
             auto_reload: true,
             debounce_ms: 500,
             image_viewer: None,
-            plot_viewer: None,
             show_timings: false,
-            clear_on_run: false,
         }
     }
 }

@@ -14,7 +14,7 @@ name = "cellbook"
 path = "src/lib.rs"
 
 [dependencies]
-cellbook-macros = { version = "0.1.0", path = "../cellbook-macros" }
+cellbook-macros = { version = "0.2", path = "../cellbook-macros" }
 futures = "0.3"
 inventory = "0.3"
 parking_lot = "0.12"

@@ -10,6 +10,6 @@ edition = "2024"
 keywords = ["notebook", "data-analysis", "statistics", "repl"]
 license = "MIT"
 repository = "https://github.com/dcompoze/cellbook"
-version = "0.1.2"
+version = "0.2.0"
 
 [workspace.dependencies]

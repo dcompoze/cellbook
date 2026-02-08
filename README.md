@@ -1,6 +1,6 @@
 <div style="text-align: center"><img src="https://raw.githubusercontent.com/dcompoze/cellbook/main/cellbook.svg" width="20%"></div>
 
-# Cellbook
+## Cellbook
 
 Dynamic computational notebook environment in plain Rust.
 
@@ -99,3 +99,38 @@ let data: Vec<f64> = consume!(data)?;
 | `./cellbook-macros` | Proc macro crate which implements `#[cell]` and `cellbook!()` macros. |
 | `./cargo-cellbook` | Cellbook project runner and command line utility. |
 | `./examples` | Cellbook usage examples and tests. |
+
+## Configuration
+
+The `cellbook!()` macro accepts a `Config` struct with builder-style methods:
+
+```rust
+use cellbook::{cellbook, Config};
+
+cellbook!(
+    Config::default()
+        .auto_reload(true)
+        .debounce_ms(500)
+        .show_timings(true)
+        .image_viewer("eog")
+);
+```
+The TUI runner reads global configuration from `$XDG_CONFIG_HOME/cellbook/config.toml` (or the platform-specific config directory).
+
+This file is created with default values on first run:
+
+```toml
+[keybindings]
+quit = "q"
+clear_context = "x"
+view_output = "o"
+reload = "r"
+edit = "e"
+run_cell = "Enter"
+navigate_down = ["Down", "j"]
+navigate_up = ["Up", "k"]
+```
+
+Keybindings can be a single key or an array of alternative keys.
+
+Supported key names include single characters and `Enter`, `Esc`, `Tab`, `Space`, `Backspace`, `Delete`, `Up`, `Down`, `Left`, `Right`, `Home`, `End`, `PageUp`, `PageDown`, `F1`, etc.

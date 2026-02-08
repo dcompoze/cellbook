@@ -16,14 +16,8 @@ pub struct Config {
     /// External command to view images.
     pub image_viewer: Option<String>,
 
-    /// External command to view plots.
-    pub plot_viewer: Option<String>,
-
     /// Show timing information for cell execution.
     pub show_timings: bool,
-
-    /// Clear output between cell runs.
-    pub clear_on_run: bool,
 }
 
 impl Default for Config {
@@ -32,9 +26,7 @@ impl Default for Config {
             auto_reload: true,
             debounce_ms: 500,
             image_viewer: None,
-            plot_viewer: None,
             show_timings: false,
-            clear_on_run: false,
         }
     }
 }
@@ -55,18 +47,8 @@ impl Config {
         self
     }
 
-    pub fn plot_viewer(mut self, cmd: impl Into<String>) -> Self {
-        self.plot_viewer = Some(cmd.into());
-        self
-    }
-
     pub fn show_timings(mut self, enabled: bool) -> Self {
         self.show_timings = enabled;
-        self
-    }
-
-    pub fn clear_on_run(mut self, enabled: bool) -> Self {
-        self.clear_on_run = enabled;
         self
     }
 }
