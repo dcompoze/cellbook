@@ -176,6 +176,32 @@ pub async fn rebuild() -> Result<()> {
 }
 
 pub async fn initial_build() -> Result<()> {
-    rebuild().await?;
-    Ok(())
+    use std::io::Write;
+
+    let spinner_chars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    let (stop_tx, mut stop_rx) = oneshot::channel::<()>();
+
+    let spinner_handle = tokio::spawn(async move {
+        let mut idx = 0;
+        loop {
+            print!("\r{} Building...", spinner_chars[idx]);
+            let _ = std::io::stdout().flush();
+            idx = (idx + 1) % spinner_chars.len();
+
+            tokio::select! {
+                biased;
+                _ = &mut stop_rx => break,
+                _ = tokio::time::sleep(Duration::from_millis(80)) => {}
+            }
+        }
+        print!("\r              \r");
+        let _ = std::io::stdout().flush();
+    });
+
+    let result = rebuild().await;
+
+    let _ = stop_tx.send(());
+    let _ = spinner_handle.await;
+
+    result
 }

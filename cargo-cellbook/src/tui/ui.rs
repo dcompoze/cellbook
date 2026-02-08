@@ -1,10 +1,10 @@
 //! TUI rendering.
 
+use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph, Wrap};
-use ratatui::Frame;
 
 use super::state::{App, BuildStatus, CellStatus};
 
@@ -32,7 +32,6 @@ fn render_cells(frame: &mut Frame, app: &mut App, area: Rect) {
         .iter()
         .enumerate()
         .map(|(i, name)| {
-            // Cell number.
             let cell_num = format!("[{}] ", i + 1);
 
             // Count indicator.
@@ -52,23 +51,22 @@ fn render_cells(frame: &mut Frame, app: &mut App, area: Rect) {
 
             // Status indicator.
             let status_span = match &app.cell_statuses[i] {
-                CellStatus::Pending => {
-                    Span::styled("[none]", Style::default().fg(Color::DarkGray))
-                }
-                CellStatus::Running => {
-                    Span::styled("[running]", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))
-                }
-                CellStatus::Success => {
-                    Span::styled("[success]", Style::default().fg(Color::Green))
-                }
-                CellStatus::Error(_) => {
-                    Span::styled("[error]", Style::default().fg(Color::Red))
-                }
+                CellStatus::Pending => Span::styled("[none]", Style::default().fg(Color::DarkGray)),
+                CellStatus::Running => Span::styled(
+                    "[running]",
+                    Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+                ),
+                CellStatus::Success => Span::styled("[success]", Style::default().fg(Color::Green)),
+                CellStatus::Error(_) => Span::styled("[error]", Style::default().fg(Color::Red)),
             };
 
             // Calculate right side width.
             let count_text = format!("[{}]", count);
-            let output_text = if app.has_output(name) { "[output]" } else { "[none]" };
+            let output_text = if app.has_output(name) {
+                "[output]"
+            } else {
+                "[none]"
+            };
             let status_text = match &app.cell_statuses[i] {
                 CellStatus::Pending => "[none]",
                 CellStatus::Running => "[running]",
@@ -157,7 +155,7 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
         Span::styled("[r]", Style::default().fg(Color::Cyan)),
         Span::raw(" Reload  "),
         Span::styled("[q]", Style::default().fg(Color::Cyan)),
-        Span::raw(" Quit "),
+        Span::raw(" Quit  "),
     ];
 
     let help_width: usize = help.iter().map(|s| s.width()).sum();
@@ -165,10 +163,10 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
     let status = match &app.build_status {
         BuildStatus::Idle => Span::styled("Ready", Style::default().fg(Color::Green)),
         BuildStatus::Building => Span::styled(
-            "Building...",
+            "Building",
             Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
         ),
-        BuildStatus::Reloading => Span::styled("Reloading...", Style::default().fg(Color::Cyan)),
+        BuildStatus::Reloading => Span::styled("Reloading", Style::default().fg(Color::Cyan)),
         BuildStatus::BuildError(_) => Span::styled(
             "Build Error",
             Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
@@ -193,10 +191,7 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
     // Prioritize commands over status when space is limited.
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Length(help_width as u16),
-            Constraint::Fill(1),
-        ])
+        .constraints([Constraint::Length(help_width as u16), Constraint::Fill(1)])
         .split(area);
 
     frame.render_widget(left, chunks[0]);

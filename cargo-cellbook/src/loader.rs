@@ -184,7 +184,7 @@ impl LoadedLibrary {
             store::get_list_fn(),
         );
 
-        future.await.map_err(|e| Error::LibLoad(e.to_string()))
+        future.await.map_err(|e| Error::CellExec(e.to_string()))
     }
 
     #[allow(dead_code)]
