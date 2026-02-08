@@ -1,5 +1,5 @@
 [package]
-description = "Procedural macros for the cellbook crate"
+description = "Procedural macros for the cellbook project"
 edition.workspace = true
 license.workspace = true
 name = "cellbook-macros"

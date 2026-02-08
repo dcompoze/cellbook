@@ -1,6 +1,6 @@
 [package]
 categories.workspace = true
-description = "Cargo subcommand for scaffolding cellbook projects"
+description = "Cellbook project runner and command line utility"
 edition.workspace = true
 keywords.workspace = true
 license.workspace = true
@@ -14,13 +14,13 @@ name = "cargo-cellbook"
 path = "src/main.rs"
 
 [dependencies]
-postcard = { version = "1", features = ["use-std"] }
 clap = { version = "4", features = ["derive"] }
 futures = "0.3"
 libloading = "0.9"
 notify = "8"
 notify-debouncer-mini = "0.7"
 parking_lot = "0.12"
+postcard = { version = "1", features = ["use-std"] }
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "sync", "time"] }

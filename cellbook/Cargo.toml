@@ -1,6 +1,6 @@
 [package]
 categories.workspace = true
-description = "A computational notebook environment for statistics and data analysis in Rust"
+description = "Dynamic computational notebook environment in plain Rust"
 edition.workspace = true
 keywords.workspace = true
 license.workspace = true
@@ -14,10 +14,10 @@ name = "cellbook"
 path = "src/lib.rs"
 
 [dependencies]
-postcard = { version = "1", features = ["use-std"] }
 cellbook-macros = { version = "0.1.0", path = "../cellbook-macros" }
 futures = "0.3"
 inventory = "0.3"
 parking_lot = "0.12"
+postcard = { version = "1", features = ["use-std"] }
 serde = { version = "1", features = ["derive"] }
 thiserror = "2.0.18"

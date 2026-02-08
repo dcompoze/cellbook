@@ -2,7 +2,7 @@
 
 # Cellbook
 
-Computational notebook experience in plain Rust.
+Dynamic computational notebook environment in plain Rust.
 
 - Cells are defined as `async` functions with `#[cell]` annotations
 
