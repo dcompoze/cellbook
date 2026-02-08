@@ -9,6 +9,6 @@ path = "cellbook.rs"
 
 [dependencies]
 cellbook = { path = "../../cellbook" }
-polars = { version = "0.46", features = ["lazy", "csv", "dtype-date"] }
+polars = { version = "0.52", features = ["lazy", "csv", "dtype-date"] }
 plotters = "0.3"
 serde = { version = "1", features = ["derive"] }

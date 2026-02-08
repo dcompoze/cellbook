@@ -2,6 +2,7 @@ mod errors;
 mod loader;
 mod runner;
 mod store;
+mod tui;
 mod watcher;
 
 use std::fs;
@@ -77,7 +78,7 @@ async fn run_project() -> Result<()> {
     let watcher_handle = watcher::start_watcher(event_tx, lib.config()).await?;
 
     // Run the TUI
-    runner::run_tui(&mut lib, event_rx).await?;
+    tui::run(&mut lib, event_rx).await?;
 
     // Stop the watcher when TUI exits
     if let Some(handle) = watcher_handle {

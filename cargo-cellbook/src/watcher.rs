@@ -6,7 +6,7 @@ use std::process::Stdio;
 use std::time::{Duration, SystemTime};
 
 use notify::{RecommendedWatcher, RecursiveMode};
-use notify_debouncer_mini::{new_debouncer, DebouncedEventKind, Debouncer};
+use notify_debouncer_mini::{DebouncedEventKind, Debouncer, new_debouncer};
 use tokio::process::Command;
 use tokio::sync::{mpsc, oneshot};
 
@@ -176,8 +176,6 @@ pub async fn rebuild() -> Result<()> {
 }
 
 pub async fn initial_build() -> Result<()> {
-    println!("Building...");
     rebuild().await?;
-    println!("Build complete.\n");
     Ok(())
 }

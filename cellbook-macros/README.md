@@ -1,8 +1,8 @@
 # cellbook-macros
 
-Procedural macros for the [cellbook](https://crates.io/crates/cellbook) crate. See the main crate for documentation.
+Procedural macros for the [cellbook](https://crates.io/crates/cellbook) project.
 
-## Provided macros
+Exported macros:
 
 | Macro | Description |
 |-------|-------------|

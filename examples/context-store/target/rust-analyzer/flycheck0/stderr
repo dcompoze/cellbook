@@ -1,0 +1,326 @@
+   0.202309428s  INFO prepare_target{force=false package_id=cargo-cellbook v0.1.2 (/mnt/Extra/Storage/Code/bfd328a4/cellbook/cargo-cellbook) target="cargo-cellbook"}: cargo::core::compiler::fingerprint: stale: changed "/mnt/Extra/Storage/Code/bfd328a4/cellbook/cargo-cellbook/src/tui/mod.rs"
+   0.202322125s  INFO prepare_target{force=false package_id=cargo-cellbook v0.1.2 (/mnt/Extra/Storage/Code/bfd328a4/cellbook/cargo-cellbook) target="cargo-cellbook"}: cargo::core::compiler::fingerprint:           (vs) "/mnt/Extra/Storage/Code/bfd328a4/cellbook/target/debug/.fingerprint/cargo-cellbook-19b1f774e97534f7/dep-bin-cargo-cellbook"
+   0.202326394s  INFO prepare_target{force=false package_id=cargo-cellbook v0.1.2 (/mnt/Extra/Storage/Code/bfd328a4/cellbook/cargo-cellbook) target="cargo-cellbook"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 1770516611, nanos: 278816442 } < FileTime { seconds: 1770517141, nanos: 152473436 }
+   0.202433729s  INFO prepare_target{force=false package_id=cargo-cellbook v0.1.2 (/mnt/Extra/Storage/Code/bfd328a4/cellbook/cargo-cellbook) target="cargo-cellbook"}: cargo::core::compiler::fingerprint: fingerprint dirty for cargo-cellbook v0.1.2 (/mnt/Extra/Storage/Code/bfd328a4/cellbook/cargo-cellbook)/Check { test: false }/TargetInner { name: "cargo-cellbook", doc: true, ..: with_path("/mnt/Extra/Storage/Code/bfd328a4/cellbook/cargo-cellbook/src/main.rs", Edition2024) }
+   0.202443268s  INFO prepare_target{force=false package_id=cargo-cellbook v0.1.2 (/mnt/Extra/Storage/Code/bfd328a4/cellbook/cargo-cellbook) target="cargo-cellbook"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "/mnt/Extra/Storage/Code/bfd328a4/cellbook/target/debug/.fingerprint/cargo-cellbook-19b1f774e97534f7/dep-bin-cargo-cellbook", reference_mtime: FileTime { seconds: 1770516611, nanos: 278816442 }, stale: "/mnt/Extra/Storage/Code/bfd328a4/cellbook/cargo-cellbook/src/tui/mod.rs", stale_mtime: FileTime { seconds: 1770517141, nanos: 152473436 } }))
+   0.206618458s  INFO prepare_target{force=false package_id=cargo-cellbook v0.1.2 (/mnt/Extra/Storage/Code/bfd328a4/cellbook/cargo-cellbook) target="cargo-cellbook"}: cargo::core::compiler::fingerprint: stale: changed "/mnt/Extra/Storage/Code/bfd328a4/cellbook/cargo-cellbook/src/tui/mod.rs"
+   0.206624069s  INFO prepare_target{force=false package_id=cargo-cellbook v0.1.2 (/mnt/Extra/Storage/Code/bfd328a4/cellbook/cargo-cellbook) target="cargo-cellbook"}: cargo::core::compiler::fingerprint:           (vs) "/mnt/Extra/Storage/Code/bfd328a4/cellbook/target/debug/.fingerprint/cargo-cellbook-b99fc113fc234a76/dep-test-bin-cargo-cellbook"
+   0.206627754s  INFO prepare_target{force=false package_id=cargo-cellbook v0.1.2 (/mnt/Extra/Storage/Code/bfd328a4/cellbook/cargo-cellbook) target="cargo-cellbook"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 1770516611, nanos: 278816442 } < FileTime { seconds: 1770517141, nanos: 152473436 }
+   0.206660477s  INFO prepare_target{force=false package_id=cargo-cellbook v0.1.2 (/mnt/Extra/Storage/Code/bfd328a4/cellbook/cargo-cellbook) target="cargo-cellbook"}: cargo::core::compiler::fingerprint: fingerprint dirty for cargo-cellbook v0.1.2 (/mnt/Extra/Storage/Code/bfd328a4/cellbook/cargo-cellbook)/Check { test: true }/TargetInner { name: "cargo-cellbook", doc: true, ..: with_path("/mnt/Extra/Storage/Code/bfd328a4/cellbook/cargo-cellbook/src/main.rs", Edition2024) }
+   0.206667760s  INFO prepare_target{force=false package_id=cargo-cellbook v0.1.2 (/mnt/Extra/Storage/Code/bfd328a4/cellbook/cargo-cellbook) target="cargo-cellbook"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "/mnt/Extra/Storage/Code/bfd328a4/cellbook/target/debug/.fingerprint/cargo-cellbook-b99fc113fc234a76/dep-test-bin-cargo-cellbook", reference_mtime: FileTime { seconds: 1770516611, nanos: 278816442 }, stale: "/mnt/Extra/Storage/Code/bfd328a4/cellbook/cargo-cellbook/src/tui/mod.rs", stale_mtime: FileTime { seconds: 1770517141, nanos: 152473436 } }))
+   0.211095487s  INFO prepare_target{force=false package_id=plot-timeseries v0.1.0 (/mnt/Extra/Storage/Code/bfd328a4/cellbook/examples/plot-timeseries) target="plot_timeseries"}: cargo::core::compiler::fingerprint: fingerprint error for plot-timeseries v0.1.0 (/mnt/Extra/Storage/Code/bfd328a4/cellbook/examples/plot-timeseries)/Check { test: false }/TargetInner { name_inferred: true, ..: lib_target("plot_timeseries", ["cdylib", "rlib"], "/mnt/Extra/Storage/Code/bfd328a4/cellbook/examples/plot-timeseries/cellbook.rs", Edition2021) }
+   0.211107884s  INFO prepare_target{force=false package_id=plot-timeseries v0.1.0 (/mnt/Extra/Storage/Code/bfd328a4/cellbook/examples/plot-timeseries) target="plot_timeseries"}: cargo::core::compiler::fingerprint:     err: failed to read `/mnt/Extra/Storage/Code/bfd328a4/cellbook/target/debug/.fingerprint/plot-timeseries-76487feb10725051/lib-plot_timeseries`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   6: cargo::ops::cargo_compile::compile_ws
+   7: cargo::ops::cargo_compile::compile_with_exec
+   8: cargo::ops::cargo_compile::compile
+   9: cargo::commands::check::exec
+  10: <cargo::cli::Exec>::exec
+  11: cargo::main
+  12: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  13: std::rt::lang_start::<()>::{closure#0}
+  14: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  15: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  16: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  17: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  18: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  19: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  20: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  21: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  22: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  23: main
+  24: <unknown>
+  25: __libc_start_main
+  26: <unknown>
+   0.218453251s  INFO prepare_target{force=false package_id=polars v0.52.0 target="polars"}: cargo::core::compiler::fingerprint: fingerprint error for polars v0.52.0/Check { test: false }/TargetInner { ..: lib_target("polars", ["lib"], "/home/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/polars-0.52.0/src/lib.rs", Edition2024) }
+   0.218462977s  INFO prepare_target{force=false package_id=polars v0.52.0 target="polars"}: cargo::core::compiler::fingerprint:     err: failed to read `/mnt/Extra/Storage/Code/bfd328a4/cellbook/target/debug/.fingerprint/polars-03459a2c75dc76fb/lib-polars`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: cargo::core::compiler::compile
+   6: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   7: cargo::ops::cargo_compile::compile_ws
+   8: cargo::ops::cargo_compile::compile_with_exec
+   9: cargo::ops::cargo_compile::compile
+  10: cargo::commands::check::exec
+  11: <cargo::cli::Exec>::exec
+  12: cargo::main
+  13: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  14: std::rt::lang_start::<()>::{closure#0}
+  15: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  16: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  17: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  18: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  19: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  20: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  21: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  22: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  23: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  24: main
+  25: <unknown>
+  26: __libc_start_main
+  27: <unknown>
+   0.225581174s  INFO prepare_target{force=false package_id=polars-lazy v0.52.0 target="polars_lazy"}: cargo::core::compiler::fingerprint: fingerprint error for polars-lazy v0.52.0/Check { test: false }/TargetInner { ..: lib_target("polars_lazy", ["lib"], "/home/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/polars-lazy-0.52.0/src/lib.rs", Edition2024) }
+   0.225590607s  INFO prepare_target{force=false package_id=polars-lazy v0.52.0 target="polars_lazy"}: cargo::core::compiler::fingerprint:     err: failed to read `/mnt/Extra/Storage/Code/bfd328a4/cellbook/target/debug/.fingerprint/polars-lazy-2c4e92586f660cf0/lib-polars_lazy`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: cargo::core::compiler::compile
+   6: cargo::core::compiler::compile
+   7: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   8: cargo::ops::cargo_compile::compile_ws
+   9: cargo::ops::cargo_compile::compile_with_exec
+  10: cargo::ops::cargo_compile::compile
+  11: cargo::commands::check::exec
+  12: <cargo::cli::Exec>::exec
+  13: cargo::main
+  14: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  15: std::rt::lang_start::<()>::{closure#0}
+  16: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  17: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  18: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  19: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  20: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  21: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  22: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  23: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  24: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  25: main
+  26: <unknown>
+  27: __libc_start_main
+  28: <unknown>
+   0.226298848s  INFO prepare_target{force=false package_id=polars-expr v0.52.0 target="polars_expr"}: cargo::core::compiler::fingerprint: fingerprint error for polars-expr v0.52.0/Check { test: false }/TargetInner { ..: lib_target("polars_expr", ["lib"], "/home/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/polars-expr-0.52.0/src/lib.rs", Edition2024) }
+   0.226306493s  INFO prepare_target{force=false package_id=polars-expr v0.52.0 target="polars_expr"}: cargo::core::compiler::fingerprint:     err: failed to read `/mnt/Extra/Storage/Code/bfd328a4/cellbook/target/debug/.fingerprint/polars-expr-a30b3ab3b809b240/lib-polars_expr`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: cargo::core::compiler::compile
+   6: cargo::core::compiler::compile
+   7: cargo::core::compiler::compile
+   8: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   9: cargo::ops::cargo_compile::compile_ws
+  10: cargo::ops::cargo_compile::compile_with_exec
+  11: cargo::ops::cargo_compile::compile
+  12: cargo::commands::check::exec
+  13: <cargo::cli::Exec>::exec
+  14: cargo::main
+  15: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  16: std::rt::lang_start::<()>::{closure#0}
+  17: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  18: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  19: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  20: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  21: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  22: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  23: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  24: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  25: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  26: main
+  27: <unknown>
+  28: __libc_start_main
+  29: <unknown>
+   0.227827058s  INFO prepare_target{force=false package_id=polars-mem-engine v0.52.0 target="polars_mem_engine"}: cargo::core::compiler::fingerprint: fingerprint error for polars-mem-engine v0.52.0/Check { test: false }/TargetInner { ..: lib_target("polars_mem_engine", ["lib"], "/home/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/polars-mem-engine-0.52.0/src/lib.rs", Edition2024) }
+   0.227835118s  INFO prepare_target{force=false package_id=polars-mem-engine v0.52.0 target="polars_mem_engine"}: cargo::core::compiler::fingerprint:     err: failed to read `/mnt/Extra/Storage/Code/bfd328a4/cellbook/target/debug/.fingerprint/polars-mem-engine-f2fc50a6d393bcfd/lib-polars_mem_engine`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: cargo::core::compiler::compile
+   6: cargo::core::compiler::compile
+   7: cargo::core::compiler::compile
+   8: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   9: cargo::ops::cargo_compile::compile_ws
+  10: cargo::ops::cargo_compile::compile_with_exec
+  11: cargo::ops::cargo_compile::compile
+  12: cargo::commands::check::exec
+  13: <cargo::cli::Exec>::exec
+  14: cargo::main
+  15: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  16: std::rt::lang_start::<()>::{closure#0}
+  17: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  18: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  19: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  20: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  21: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  22: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  23: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  24: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  25: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  26: main
+  27: <unknown>
+  28: __libc_start_main
+  29: <unknown>
+   0.228457754s  INFO prepare_target{force=false package_id=polars-stream v0.52.0 target="polars_stream"}: cargo::core::compiler::fingerprint: fingerprint error for polars-stream v0.52.0/Check { test: false }/TargetInner { ..: lib_target("polars_stream", ["lib"], "/home/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/polars-stream-0.52.0/src/lib.rs", Edition2024) }
+   0.228465049s  INFO prepare_target{force=false package_id=polars-stream v0.52.0 target="polars_stream"}: cargo::core::compiler::fingerprint:     err: failed to read `/mnt/Extra/Storage/Code/bfd328a4/cellbook/target/debug/.fingerprint/polars-stream-df5e4aa2e33c022c/lib-polars_stream`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: cargo::core::compiler::compile
+   6: cargo::core::compiler::compile
+   7: cargo::core::compiler::compile
+   8: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   9: cargo::ops::cargo_compile::compile_ws
+  10: cargo::ops::cargo_compile::compile_with_exec
+  11: cargo::ops::cargo_compile::compile
+  12: cargo::commands::check::exec
+  13: <cargo::cli::Exec>::exec
+  14: cargo::main
+  15: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  16: std::rt::lang_start::<()>::{closure#0}
+  17: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  18: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  19: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  20: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  21: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  22: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  23: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  24: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  25: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  26: main
+  27: <unknown>
+  28: __libc_start_main
+  29: <unknown>
+   0.229620467s  INFO prepare_target{force=false package_id=plot-timeseries v0.1.0 (/mnt/Extra/Storage/Code/bfd328a4/cellbook/examples/plot-timeseries) target="plot_timeseries"}: cargo::core::compiler::fingerprint: fingerprint error for plot-timeseries v0.1.0 (/mnt/Extra/Storage/Code/bfd328a4/cellbook/examples/plot-timeseries)/Check { test: true }/TargetInner { name_inferred: true, ..: lib_target("plot_timeseries", ["cdylib", "rlib"], "/mnt/Extra/Storage/Code/bfd328a4/cellbook/examples/plot-timeseries/cellbook.rs", Edition2021) }
+   0.229629742s  INFO prepare_target{force=false package_id=plot-timeseries v0.1.0 (/mnt/Extra/Storage/Code/bfd328a4/cellbook/examples/plot-timeseries) target="plot_timeseries"}: cargo::core::compiler::fingerprint:     err: failed to read `/mnt/Extra/Storage/Code/bfd328a4/cellbook/target/debug/.fingerprint/plot-timeseries-2d36c374e8696fa1/test-lib-plot_timeseries`
+
+Caused by:
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: cargo_util::paths::read_bytes
+   1: cargo_util::paths::read
+   2: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   3: cargo::core::compiler::fingerprint::prepare_target
+   4: cargo::core::compiler::compile
+   5: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   6: cargo::ops::cargo_compile::compile_ws
+   7: cargo::ops::cargo_compile::compile_with_exec
+   8: cargo::ops::cargo_compile::compile
+   9: cargo::commands::check::exec
+  10: <cargo::cli::Exec>::exec
+  11: cargo::main
+  12: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  13: std::rt::lang_start::<()>::{closure#0}
+  14: core::ops::function::impls::<impl core::ops::function::FnOnce<A> for &F>::call_once
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:287:21
+  15: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  16: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  17: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  18: std::rt::lang_start_internal::{{closure}}
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:175:24
+  19: std::panicking::catch_unwind::do_call
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:590:40
+  20: std::panicking::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panicking.rs:553:19
+  21: std::panic::catch_unwind
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/panic.rs:359:14
+  22: std::rt::lang_start_internal
+             at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/rt.rs:171:5
+  23: main
+  24: <unknown>
+  25: __libc_start_main
+  26: <unknown>
+    Checking cargo-cellbook v0.1.2 (/mnt/Extra/Storage/Code/bfd328a4/cellbook/cargo-cellbook)
+    Checking polars-expr v0.52.0
+error: could not compile `polars-expr` (lib) due to 26 previous errors

@@ -51,7 +51,7 @@ async fn report() -> Result<()> {
     let config: DemoConfig = load!(config)?;
     let result: AnalysisResult = load!(result)?;
 
-    println!("=== Report for '{}' ===", config.name);
+    println!("Report for '{}':", config.name);
     println!("Threshold: {}", config.threshold);
     println!("Mean: {:.4}", result.mean);
     println!("Valid count: {}", result.count);

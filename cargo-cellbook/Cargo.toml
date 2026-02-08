@@ -24,3 +24,5 @@ postcard = { version = "1", features = ["use-std"] }
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "sync", "time"] }
+ratatui = "0.30"
+gag = "1.0"

@@ -91,10 +91,11 @@ remove!(data);
 let data: Vec<f64> = consume!(data)?;
 ```
 
-## Components
+## Crates
 
 | Crate | Description |
 |-------|-------------|
-| `cellbook` | Core library with context store, cell registry, and macros |
-| `cellbook-macros` | Proc macros (`#[cell]`, `cellbook!`) |
-| `cargo-cellbook` | CLI for project scaffolding and runtime |
+| `./cellbook` | Core library with shared context store, cell registry and declarative macros. |
+| `./cellbook-macros` | Proc macro crate which implements `#[cell]` and `cellbook!()` macros. |
+| `./cargo-cellbook` | Cellbook project runner and command line utility. |
+| `./examples` | Cellbook usage examples and tests. |
