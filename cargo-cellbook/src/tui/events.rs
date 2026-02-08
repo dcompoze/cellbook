@@ -118,6 +118,7 @@ pub enum Action {
     Quit,
     RunCell(usize),
     ViewOutput,
+    ViewError,
     ClearContext,
     Reload,
     Edit,
@@ -139,6 +140,9 @@ pub fn handle_key(key: KeyEvent, app: &mut App, config: &TuiConfig) -> Action {
     }
     if kb.view_output.matches(key.code) {
         return Action::ViewOutput;
+    }
+    if kb.view_error.matches(key.code) {
+        return Action::ViewError;
     }
     if kb.reload.matches(key.code) {
         return Action::Reload;

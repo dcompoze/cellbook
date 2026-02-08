@@ -145,6 +145,13 @@ impl App {
         self.cell_outputs.contains_key(cell_name)
     }
 
+    pub fn get_error(&self, idx: usize) -> Option<&str> {
+        match self.cell_statuses.get(idx) {
+            Some(CellStatus::Error(msg)) => Some(msg.as_str()),
+            _ => None,
+        }
+    }
+
     pub fn refresh_cells(&mut self, cells: Vec<String>) {
         let cell_count = cells.len();
         self.cells = cells;

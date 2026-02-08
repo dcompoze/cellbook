@@ -126,8 +126,9 @@ This file is created with default values on first run:
 quit = "q"
 clear_context = "x"
 view_output = "o"
+view_error = "e"
 reload = "r"
-edit = "e"
+edit = "E"
 run_cell = "Enter"
 navigate_down = ["Down", "j"]
 navigate_up = ["Up", "k"]

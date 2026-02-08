@@ -63,6 +63,16 @@ pub async fn run(lib: &mut LoadedLibrary, event_rx: mpsc::Receiver<TuiEvent>) ->
                                 events.resume();
                             }
                         }
+                        Action::ViewError => {
+                            if let Some(idx) = app.selected_cell_index()
+                                && let Some(error) = app.get_error(idx)
+                            {
+                                events.stop();
+                                view_output_in_pager(error);
+                                terminal = ratatui::init();
+                                events.resume();
+                            }
+                        }
                         Action::ClearContext => {
                             store::clear();
                             app.refresh_context(store::list());

@@ -14,7 +14,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Min(5),    // Cells
-            Constraint::Length(4), // Context
+            Constraint::Length(8), // Context
             Constraint::Length(1), // Status bar
         ])
         .split(frame.area());
@@ -25,8 +25,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 }
 
 fn render_cells(frame: &mut Frame, app: &mut App, area: Rect) {
-    // Calculate available width for right-aligned status.
-    let inner_width = area.width.saturating_sub(4) as usize; // Account for borders and padding.
+    let inner_width = area.width as usize;
 
     let items: Vec<ListItem> = app
         .cells
@@ -101,9 +100,9 @@ fn render_cells(frame: &mut Frame, app: &mut App, area: Rect) {
     let list = List::new(items)
         .block(
             Block::default()
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(Color::Cyan))
-                .title("Cells"),
+                .borders(Borders::TOP)
+                .border_style(Style::default().fg(Color::White))
+                .title("Cells "),
         )
         .highlight_style(
             Style::default()
@@ -134,8 +133,9 @@ fn render_context(frame: &mut Frame, app: &App, area: Rect) {
     let context = Paragraph::new(Line::from(items))
         .block(
             Block::default()
-                .borders(Borders::ALL)
-                .title("Store"),
+                .borders(Borders::TOP)
+                .border_style(Style::default().fg(Color::White))
+                .title("Store "),
         )
         .wrap(Wrap { trim: true });
 
@@ -149,6 +149,8 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
         Span::styled("[o]", Style::default().fg(Color::Cyan)),
         Span::raw(" Output  "),
         Span::styled("[e]", Style::default().fg(Color::Cyan)),
+        Span::raw(" Error  "),
+        Span::styled("[E]", Style::default().fg(Color::Cyan)),
         Span::raw(" Edit  "),
         Span::styled("[x]", Style::default().fg(Color::Cyan)),
         Span::raw(" Clear  "),
@@ -178,12 +180,15 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
         Style::default().fg(Color::DarkGray),
     );
 
+    let bar_style = Style::default().bg(Color::Rgb(35, 37, 42));
+
     // Left side: help keys.
-    let left = Paragraph::new(Line::from(help));
+    let left = Paragraph::new(Line::from(help)).style(bar_style);
 
     // Right side: status and cell count.
     let right = Paragraph::new(Line::from(vec![status, cell_count]))
-        .alignment(Alignment::Right);
+        .alignment(Alignment::Right)
+        .style(bar_style);
 
     // Prioritize commands over status when space is limited.
     let chunks = Layout::default()
