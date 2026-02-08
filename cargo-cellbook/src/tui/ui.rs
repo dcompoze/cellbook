@@ -84,7 +84,7 @@ fn render_cells(frame: &mut Frame, app: &mut App, area: Rect) {
             let padding = inner_width.saturating_sub(left_len + display_name.len() + right_len);
 
             let line = Line::from(vec![
-                Span::raw(cell_num),
+                Span::styled(cell_num, Style::default().fg(Color::DarkGray)),
                 Span::raw(display_name),
                 Span::raw(" ".repeat(padding)),
                 count_span,
@@ -107,7 +107,7 @@ fn render_cells(frame: &mut Frame, app: &mut App, area: Rect) {
         )
         .highlight_style(
             Style::default()
-                .bg(Color::DarkGray)
+                .bg(Color::Rgb(35, 37, 42))
                 .add_modifier(Modifier::BOLD),
         );
 
@@ -116,10 +116,7 @@ fn render_cells(frame: &mut Frame, app: &mut App, area: Rect) {
 
 fn render_context(frame: &mut Frame, app: &App, area: Rect) {
     let items: Vec<Span> = if app.context_items.is_empty() {
-        vec![Span::styled(
-            "(empty)",
-            Style::default().fg(Color::DarkGray),
-        )]
+        vec![]
     } else {
         app.context_items
             .iter()
@@ -138,7 +135,7 @@ fn render_context(frame: &mut Frame, app: &App, area: Rect) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Context"),
+                .title("Store"),
         )
         .wrap(Wrap { trim: true });
 
@@ -148,18 +145,20 @@ fn render_context(frame: &mut Frame, app: &App, area: Rect) {
 fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
     let help = vec![
         Span::styled("[Enter]", Style::default().fg(Color::Cyan)),
-        Span::raw(" Run cell  "),
+        Span::raw(" Run  "),
         Span::styled("[o]", Style::default().fg(Color::Cyan)),
-        Span::raw(" Show output  "),
+        Span::raw(" Output  "),
         Span::styled("[e]", Style::default().fg(Color::Cyan)),
         Span::raw(" Edit  "),
         Span::styled("[x]", Style::default().fg(Color::Cyan)),
-        Span::raw(" Clear store  "),
+        Span::raw(" Clear  "),
         Span::styled("[r]", Style::default().fg(Color::Cyan)),
         Span::raw(" Reload  "),
         Span::styled("[q]", Style::default().fg(Color::Cyan)),
-        Span::raw(" Quit"),
+        Span::raw(" Quit "),
     ];
+
+    let help_width: usize = help.iter().map(|s| s.width()).sum();
 
     let status = match &app.build_status {
         BuildStatus::Idle => Span::styled("Ready", Style::default().fg(Color::Green)),
@@ -175,7 +174,7 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
     };
 
     let cell_count = Span::styled(
-        format!(" ({} cells)", app.cells.len()),
+        format!(" [{} cells]", app.cells.len()),
         Style::default().fg(Color::DarkGray),
     );
 
@@ -186,10 +185,13 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
     let right = Paragraph::new(Line::from(vec![status, cell_count]))
         .alignment(Alignment::Right);
 
-    // Split the area for left and right.
+    // Prioritize commands over status when space is limited.
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
+        .constraints([
+            Constraint::Length(help_width as u16),
+            Constraint::Fill(1),
+        ])
         .split(area);
 
     frame.render_widget(left, chunks[0]);

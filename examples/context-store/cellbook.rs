@@ -24,7 +24,7 @@ async fn setup() -> Result<()> {
     let raw_data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 100.0];
     store!(raw_data)?;
 
-    println!("Setup complete - stored demo config and raw_data");
+    println!("Stored demo config and raw_data");
     Ok(())
 }
 

@@ -1,5 +1,6 @@
 //! Ratatui-based TUI for cellbook.
 
+mod config;
 mod events;
 mod state;
 mod ui;
@@ -9,7 +10,10 @@ use std::process::Command;
 use std::time::{Duration, Instant};
 
 use gag::BufferRedirect;
+use ratatui::crossterm::cursor::MoveTo;
 use ratatui::crossterm::event::Event as CrosstermEvent;
+use ratatui::crossterm::terminal::{Clear, ClearType};
+use ratatui::crossterm::ExecutableCommand;
 use tokio::sync::mpsc;
 
 use crate::errors::Result;
@@ -25,6 +29,10 @@ use state::{App, BuildStatus, CellOutput, CellStatus};
 pub async fn run(lib: &mut LoadedLibrary, event_rx: mpsc::Receiver<TuiEvent>) -> Result<()> {
     let mut terminal = ratatui::init();
 
+    // Load TUI configuration and ensure default config file exists.
+    config::ensure_config_exists();
+    let tui_config = config::load();
+
     let cells: Vec<String> = lib.cells().iter().map(|c| c.name.clone()).collect();
     let mut app = App::new(cells, lib.config().show_timings);
     app.refresh_context(store::list());
@@ -37,7 +45,7 @@ pub async fn run(lib: &mut LoadedLibrary, event_rx: mpsc::Receiver<TuiEvent>) ->
         if let Some(event) = events.next().await {
             match event {
                 AppEvent::Terminal(CrosstermEvent::Key(key)) => {
-                    let action = handle_key(key, &mut app);
+                    let action = handle_key(key, &mut app, &tui_config);
                     match action {
                         Action::Quit => break,
                         Action::RunCell(idx) => {
@@ -63,8 +71,12 @@ pub async fn run(lib: &mut LoadedLibrary, event_rx: mpsc::Receiver<TuiEvent>) ->
                             trigger_reload(&mut app, lib).await;
                         }
                         Action::Edit => {
+                            let line = app
+                                .selected_cell_index()
+                                .and_then(|i| lib.cells().get(i))
+                                .map(|c| c.line);
                             events.stop();
-                            edit_cellbook();
+                            edit_cellbook(line);
                             terminal = ratatui::init();
                             events.resume();
                         }
@@ -206,8 +218,12 @@ where
 
 /// View output in an external pager.
 fn view_output_in_pager(output: &str) {
-    // Restore terminal before spawning pager.
     ratatui::restore();
+
+    // Clear screen to minimize flash of terminal history.
+    let _ = std::io::stdout()
+        .execute(Clear(ClearType::All))
+        .and_then(|s| s.execute(MoveTo(0, 0)));
 
     let pager = std::env::var("PAGER").unwrap_or_else(|_| "less".to_string());
     let mut child = match Command::new(&pager)
@@ -232,11 +248,23 @@ fn view_output_in_pager(output: &str) {
 }
 
 /// Open cellbook.rs in the user's editor.
-fn edit_cellbook() {
+/// If a line number is provided, attempts to open at that line.
+fn edit_cellbook(line: Option<u32>) {
     ratatui::restore();
 
+    // Clear screen to minimize flash of terminal history.
+    let _ = std::io::stdout()
+        .execute(Clear(ClearType::All))
+        .and_then(|s| s.execute(MoveTo(0, 0)));
+
     let editor = std::env::var("EDITOR").unwrap_or_else(|_| "vi".to_string());
-    let _ = Command::new(&editor)
-        .arg("cellbook.rs")
-        .status();
+    let mut cmd = Command::new(&editor);
+
+    // Most editors support +LINE syntax (vim, nvim, nano, emacs, etc).
+    if let Some(n) = line {
+        cmd.arg(format!("+{}", n));
+    }
+
+    cmd.arg("cellbook.rs");
+    let _ = cmd.status();
 }

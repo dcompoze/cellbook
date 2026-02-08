@@ -4,11 +4,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use ratatui::crossterm::event::{self, Event as CrosstermEvent, KeyCode, KeyEvent, KeyEventKind};
+use ratatui::crossterm::event::{self, Event as CrosstermEvent, KeyEvent, KeyEventKind};
 use tokio::sync::mpsc;
 
 use crate::runner::TuiEvent;
 
+use super::config::TuiConfig;
 use super::state::App;
 
 /// Unified event type for the TUI.
@@ -123,32 +124,41 @@ pub enum Action {
 }
 
 /// Process a key event and return the action.
-pub fn handle_key(key: KeyEvent, app: &mut App) -> Action {
+pub fn handle_key(key: KeyEvent, app: &mut App, config: &TuiConfig) -> Action {
     if key.kind != KeyEventKind::Press {
         return Action::None;
     }
 
-    match key.code {
-        KeyCode::Char('q') => Action::Quit,
-        KeyCode::Char('x') => Action::ClearContext,
-        KeyCode::Char('o') => Action::ViewOutput,
-        KeyCode::Char('r') => Action::Reload,
-        KeyCode::Char('e') => Action::Edit,
-        KeyCode::Down | KeyCode::Char('j') => {
-            app.select_next();
-            Action::None
-        }
-        KeyCode::Up | KeyCode::Char('k') => {
-            app.select_previous();
-            Action::None
-        }
-        KeyCode::Enter => {
-            if let Some(idx) = app.selected_cell_index() {
-                Action::RunCell(idx)
-            } else {
-                Action::None
-            }
-        }
-        _ => Action::None,
+    let kb = &config.keybindings;
+
+    if kb.quit.matches(key.code) {
+        return Action::Quit;
     }
+    if kb.clear_context.matches(key.code) {
+        return Action::ClearContext;
+    }
+    if kb.view_output.matches(key.code) {
+        return Action::ViewOutput;
+    }
+    if kb.reload.matches(key.code) {
+        return Action::Reload;
+    }
+    if kb.edit.matches(key.code) {
+        return Action::Edit;
+    }
+    if kb.navigate_down.matches(key.code) {
+        app.select_next();
+        return Action::None;
+    }
+    if kb.navigate_up.matches(key.code) {
+        app.select_previous();
+        return Action::None;
+    }
+    if kb.run_cell.matches(key.code)
+        && let Some(idx) = app.selected_cell_index()
+    {
+        return Action::RunCell(idx);
+    }
+
+    Action::None
 }

@@ -149,6 +149,7 @@ impl App {
         let cell_count = cells.len();
         self.cells = cells;
         self.cell_statuses = vec![CellStatus::Pending; cell_count];
+        self.cell_counts.clear();
 
         // Preserve selection if valid.
         if let Some(i) = self.list_state.selected() {
