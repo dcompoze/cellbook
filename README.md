@@ -1,10 +1,12 @@
-<div style="text-align: center"><img src="https://raw.githubusercontent.com/dcompoze/cellbook/main/cellbook.svg" width="20%"></div>
+<div align="center"><img src="https://raw.githubusercontent.com/dcompoze/cellbook/main/cellbook.svg" width="15%"></div>
 
 ## Cellbook
 
 Dynamic computational notebook environment in plain Rust.
 
-- Cells are defined as `async` functions with `#[cell]` annotations
+<div align="center"><img src="https://raw.githubusercontent.com/dcompoze/cellbook/main/screenshot.png" width="100%"></div>
+
+- Cells are defined as `async` functions with `#[cell]` macro annotations
 
 - Cells are compiled as a `dylib` crate and dynamically reloaded on changes
 
