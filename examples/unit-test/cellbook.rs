@@ -19,7 +19,7 @@ async fn load_data() -> Result<()> {
 
 #[cell]
 async fn compute_stats() -> Result<()> {
-    let data: Vec<f64> = load!(data as Vec<f64>)?;
+    let data: Vec<f64> = load!(data)?;
 
     let sum: f64 = data.iter().sum();
     let count = data.len();
@@ -33,7 +33,7 @@ async fn compute_stats() -> Result<()> {
 
 #[cell]
 async fn print_stats() -> Result<()> {
-    let stats: Stats = load!(stats as Stats)?;
+    let stats: Stats = load!(stats)?;
     println!(
         "Mean: {:.2}, Sum: {:.2}, Count: {}",
         stats.mean, stats.sum, stats.count

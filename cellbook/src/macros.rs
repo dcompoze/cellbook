@@ -29,12 +29,19 @@ macro_rules! store {
 /// # Examples
 ///
 /// ```ignore
-/// let data: Vec<i32> = load!(data as Vec<i32>)?;
+/// // Explicit type in macro
+/// let data = load!(data as Vec<i32>)?;
+///
+/// // Type inferred from annotation
+/// let data: Vec<i32> = load!(data)?;
 /// ```
 #[macro_export]
 macro_rules! load {
     ($ctx:expr, $name:ident as $ty:ty) => {
         $ctx.load::<$ty>(stringify!($name))
+    };
+    ($ctx:expr, $name:ident) => {
+        $ctx.load(stringify!($name))
     };
 }
 
@@ -64,12 +71,19 @@ macro_rules! remove {
 /// # Examples
 ///
 /// ```ignore
-/// let data: Vec<i32> = consume!(temp_data as Vec<i32>)?;
+/// // Explicit type in macro
+/// let data = consume!(temp_data as Vec<i32>)?;
+///
+/// // Type inferred from annotation
+/// let data: Vec<i32> = consume!(temp_data)?;
 /// // temp_data is now removed from context
 /// ```
 #[macro_export]
 macro_rules! consume {
     ($ctx:expr, $name:ident as $ty:ty) => {
         $ctx.consume::<$ty>(stringify!($name))
+    };
+    ($ctx:expr, $name:ident) => {
+        $ctx.consume(stringify!($name))
     };
 }

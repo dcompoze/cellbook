@@ -133,7 +133,7 @@ async fn load_data() -> Result<()> {
 
 #[cell]
 async fn compute_stats() -> Result<()> {
-    let all_prices: Vec<StockPrices> = load!(all_prices as Vec<StockPrices>)?;
+    let all_prices: Vec<StockPrices> = load!(all_prices)?;
 
     let mut all_stats = Vec::new();
 
@@ -187,7 +187,7 @@ async fn compute_stats() -> Result<()> {
 
 #[cell]
 async fn plot_prices() -> Result<()> {
-    let all_prices: Vec<StockPrices> = load!(all_prices as Vec<StockPrices>)?;
+    let all_prices: Vec<StockPrices> = load!(all_prices)?;
 
     let output_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/output");
     std::fs::create_dir_all(output_dir)?;
@@ -263,7 +263,7 @@ async fn plot_prices() -> Result<()> {
 
 #[cell]
 async fn plot_volume() -> Result<()> {
-    let all_stats: Vec<StockStats> = load!(all_stats as Vec<StockStats>)?;
+    let all_stats: Vec<StockStats> = load!(all_stats)?;
 
     let output_path = concat!(env!("CARGO_MANIFEST_DIR"), "/output/volume_comparison.svg");
 
@@ -328,7 +328,7 @@ async fn plot_volume() -> Result<()> {
 
 #[cell]
 async fn plot_performance() -> Result<()> {
-    let all_stats: Vec<StockStats> = load!(all_stats as Vec<StockStats>)?;
+    let all_stats: Vec<StockStats> = load!(all_stats)?;
 
     let output_path = concat!(env!("CARGO_MANIFEST_DIR"), "/output/performance.svg");
 
@@ -390,7 +390,7 @@ async fn plot_performance() -> Result<()> {
 
 #[cell]
 async fn plot_risk_return() -> Result<()> {
-    let all_stats: Vec<StockStats> = load!(all_stats as Vec<StockStats>)?;
+    let all_stats: Vec<StockStats> = load!(all_stats)?;
 
     let output_path = concat!(env!("CARGO_MANIFEST_DIR"), "/output/risk_return.svg");
 
@@ -464,7 +464,7 @@ async fn plot_risk_return() -> Result<()> {
 
 #[cell]
 async fn calculate_returns() -> Result<()> {
-    let all_prices: Vec<StockPrices> = load!(all_prices as Vec<StockPrices>)?;
+    let all_prices: Vec<StockPrices> = load!(all_prices)?;
 
     let mut all_returns = Vec::new();
 
@@ -496,7 +496,7 @@ async fn calculate_returns() -> Result<()> {
 
 #[cell]
 async fn plot_returns() -> Result<()> {
-    let all_returns: Vec<DailyReturns> = load!(all_returns as Vec<DailyReturns>)?;
+    let all_returns: Vec<DailyReturns> = load!(all_returns)?;
 
     let output_path = concat!(env!("CARGO_MANIFEST_DIR"), "/output/returns_distribution.svg");
 
@@ -574,7 +574,7 @@ async fn plot_returns() -> Result<()> {
 
 #[cell]
 async fn summary() -> Result<()> {
-    let all_stats: Vec<StockStats> = load!(all_stats as Vec<StockStats>)?;
+    let all_stats: Vec<StockStats> = load!(all_stats)?;
 
     println!("╔══════════════════════════════════════════════════════════════════╗");
     println!("║                    STOCK ANALYSIS SUMMARY                        ║");

@@ -117,12 +117,11 @@ pub async fn start_watcher(
     let mut mtimes: HashMap<PathBuf, SystemTime> = HashMap::new();
 
     // Initialize mtimes for watched files (use canonical paths for consistent matching)
-    if cellbook_rs.exists() {
-        if let Ok(canonical) = cellbook_rs.canonicalize() {
-            if let Some(mtime) = get_mtime(&canonical) {
-                mtimes.insert(canonical, mtime);
-            }
-        }
+    if cellbook_rs.exists()
+        && let Ok(canonical) = cellbook_rs.canonicalize()
+        && let Some(mtime) = get_mtime(&canonical)
+    {
+        mtimes.insert(canonical, mtime);
     }
 
     // Spawn async task to handle events with shutdown support

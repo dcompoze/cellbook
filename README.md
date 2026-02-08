@@ -54,7 +54,7 @@ async fn load_data() -> Result<()> {
 
 #[cell]
 async fn compute_stats() -> Result<()> {
-    let data: Vec<f64> = load!(data as Vec<f64>)?;
+    let data: Vec<f64> = load!(data)?;
     let stats = Stats {
         mean: data.iter().sum::<f64>() / data.len() as f64,
         count: data.len(),
@@ -82,13 +82,13 @@ store!(data)?;
 store!(my_key = some_value)?;
 
 // Load a value (type has to be specified)
-let data: Vec<f64> = load!(data as Vec<f64>)?;
+let data: Vec<f64> = load!(data)?;
 
 // Remove a value from the store
 remove!(data);
 
 // Load and remove the value from the store
-let data: Vec<f64> = consume!(data as Vec<f64>)?;
+let data: Vec<f64> = consume!(data)?;
 ```
 
 ## Components

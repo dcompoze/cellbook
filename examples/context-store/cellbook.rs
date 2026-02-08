@@ -30,8 +30,8 @@ async fn setup() -> Result<()> {
 
 #[cell]
 async fn analyze() -> Result<()> {
-    let config: DemoConfig = load!(config as DemoConfig)?;
-    let raw_data: Vec<f64> = load!(raw_data as Vec<f64>)?;
+    let config: DemoConfig = load!(config)?;
+    let raw_data: Vec<f64> = load!(raw_data)?;
 
     let mean = raw_data.iter().sum::<f64>() / raw_data.len() as f64;
     let count = raw_data
@@ -48,8 +48,8 @@ async fn analyze() -> Result<()> {
 
 #[cell]
 async fn report() -> Result<()> {
-    let config: DemoConfig = load!(config as DemoConfig)?;
-    let result: AnalysisResult = load!(result as AnalysisResult)?;
+    let config: DemoConfig = load!(config)?;
+    let result: AnalysisResult = load!(result)?;
 
     println!("=== Report for '{}' ===", config.name);
     println!("Threshold: {}", config.threshold);

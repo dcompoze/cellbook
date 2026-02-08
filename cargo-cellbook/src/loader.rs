@@ -279,17 +279,13 @@ pub fn find_dylib_path() -> Result<PathBuf> {
         }
         let parent = parent.unwrap();
         let parent_cargo = parent.join("Cargo.toml");
-        if parent_cargo.exists() {
-            if let Ok(content) = std::fs::read_to_string(&parent_cargo) {
-                if content.contains("[workspace]") {
-                    let workspace_path = parent.join("target/debug").join(&lib_filename);
-                    if workspace_path.exists() {
-                        return Ok(workspace_path);
-                    }
-                    // Even if doesn't exist yet, return workspace path for build
-                    return Ok(workspace_path);
-                }
-            }
+        if parent_cargo.exists()
+            && let Ok(content) = std::fs::read_to_string(&parent_cargo)
+            && content.contains("[workspace]")
+        {
+            let workspace_path = parent.join("target/debug").join(&lib_filename);
+            // Return workspace path whether it exists or not (will be created by build)
+            return Ok(workspace_path);
         }
         current = parent.to_path_buf();
     }
@@ -307,11 +303,12 @@ fn extract_package_name(cargo_toml: &str) -> Result<String> {
             in_package = true;
         } else if line.starts_with('[') {
             in_package = false;
-        } else if in_package && line.starts_with("name") {
-            if let Some(value) = line.split('=').nth(1) {
-                let name = value.trim().trim_matches('"').trim_matches('\'');
-                return Ok(name.to_string());
-            }
+        } else if in_package
+            && line.starts_with("name")
+            && let Some(value) = line.split('=').nth(1)
+        {
+            let name = value.trim().trim_matches('"').trim_matches('\'');
+            return Ok(name.to_string());
         }
     }
     Err(Error::LibLoad(
