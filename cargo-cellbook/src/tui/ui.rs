@@ -32,11 +32,13 @@ fn render_cells(frame: &mut Frame, app: &mut App, area: Rect) {
         .iter()
         .enumerate()
         .map(|(i, name)| {
-            let cell_num = format!("[{}] ", i + 1);
+            let cell_num = format!("[{}] ", i);
 
             // Count indicator.
             let count = app.get_count(name);
-            let count_span = if count == 0 {
+            let count_span = if i == 0 {
+                Span::styled(format!("[{}]", count), Style::default().fg(Color::Cyan))
+            } else if count == 0 {
                 Span::styled(format!("[{}]", count), Style::default().fg(Color::DarkGray))
             } else {
                 Span::styled(format!("[{}]", count), Style::default().fg(Color::Yellow))

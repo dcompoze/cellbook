@@ -125,15 +125,18 @@ cellbook = "*"
 
     // Create cellbook.rs with example cell
     let cellbook_rs = r#"use anyhow::Result;
-use cellbook::{cell, cellbook};
+use cellbook::{cell, init};
+
+#[init]
+async fn setup() -> Result<()> {
+    Ok(())
+}
 
 #[cell]
 async fn hello() -> Result<()> {
     println!("Hello");
     Ok(())
 }
-
-cellbook!();
 "#;
     fs::write(project_path.join("cellbook.rs"), cellbook_rs)?;
 

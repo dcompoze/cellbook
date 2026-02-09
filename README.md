@@ -32,16 +32,21 @@ cargo cellbook run
 
 ## Notebook structure
 
-The notebook consists of individual cells which are loaded in source order and a `cellbook!()` invocation which exports registered cells.
+The notebook consists of an `#[init]` function (runs on load/reload) and individual `#[cell]` functions loaded in source order.
 
 ```rust
-use cellbook::{cell, cellbook, load, store, Result};
+use cellbook::{cell, init, load, store, Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Stats {
     mean: f64,
     count: usize,
+}
+
+#[init]
+async fn setup() -> Result<()> {
+    Ok(())
 }
 
 #[cell]
@@ -64,7 +69,6 @@ async fn compute_stats() -> Result<()> {
     Ok(())
 }
 
-cellbook!();
 ```
 
 ## Context store
@@ -96,7 +100,7 @@ let data: Vec<f64> = consume!(data)?;
 | Crate | Description |
 |-------|-------------|
 | `./cellbook` | Core library with shared context store, cell registry and declarative macros. |
-| `./cellbook-macros` | Proc macro crate which implements `#[cell]` and `cellbook!()` macros. |
+| `./cellbook-macros` | Proc macro crate which implements `#[cell]` and `#[init]` macros. |
 | `./cargo-cellbook` | Cellbook project runner and command line utility. |
 | `./examples` | Cellbook usage examples and tests. |
 

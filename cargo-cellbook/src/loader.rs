@@ -23,14 +23,20 @@ type CellFn = fn(
     store::RemoveFn,
     store::ListFn,
 ) -> BoxFuture<'static, std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>>;
+type InitFn =
+    fn() -> BoxFuture<'static, std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>>;
 
 type GetCellsFn = unsafe extern "Rust" fn() -> Vec<(String, u32, CellFn)>;
+type GetInitFn = unsafe extern "Rust" fn() -> (String, u32, InitFn);
 
 pub struct LoadedLibrary {
     _library: Library,
     _old_libraries: Vec<Library>,
     cells: Vec<CellInfo>,
     cell_fns: Vec<CellFn>,
+    init_name: String,
+    init_line: u32,
+    init_fn: InitFn,
     lib_path: PathBuf,
     loaded_path: PathBuf,
     temp_paths: Vec<PathBuf>,
@@ -50,9 +56,12 @@ impl LoadedLibrary {
         let library = unsafe { Library::new(lib_path) }
             .map_err(|e| Error::LibLoad(format!("Failed to load {}: {}", lib_path.display(), e)))?;
 
-        let (cells, cell_fns) = unsafe {
+        let (cells, cell_fns, init_name, init_line, init_fn) = unsafe {
             let get_cells: Symbol<GetCellsFn> = library
                 .get(b"__cellbook_get_cells")
+                .map_err(|e| Error::LibLoad(format!("Symbol not found: {}", e)))?;
+            let get_init: Symbol<GetInitFn> = library
+                .get(b"__cellbook_get_init")
                 .map_err(|e| Error::LibLoad(format!("Symbol not found: {}", e)))?;
 
             let raw_cells = get_cells();
@@ -70,7 +79,8 @@ impl LoadedLibrary {
             let sorted_cells: Vec<_> = indices.iter().map(|&i| cells[i].clone()).collect();
             let sorted_fns: Vec<_> = indices.iter().map(|&i| cell_fns[i]).collect();
 
-            (sorted_cells, sorted_fns)
+            let (init_name, init_line, init_fn) = get_init();
+            (sorted_cells, sorted_fns, init_name, init_line, init_fn)
         };
 
         Ok(LoadedLibrary {
@@ -78,6 +88,9 @@ impl LoadedLibrary {
             _old_libraries: Vec::new(),
             cells,
             cell_fns,
+            init_name,
+            init_line,
+            init_fn,
             lib_path: lib_path.to_path_buf(),
             loaded_path: lib_path.to_path_buf(),
             temp_paths: Vec::new(),
@@ -97,9 +110,12 @@ impl LoadedLibrary {
             Error::LibLoad(format!("Failed to load {}: {}", unique_path.display(), e))
         })?;
 
-        let (cells, cell_fns) = unsafe {
+        let (cells, cell_fns, init_name, init_line, init_fn) = unsafe {
             let get_cells: Symbol<GetCellsFn> = library
                 .get(b"__cellbook_get_cells")
+                .map_err(|e| Error::LibLoad(format!("Symbol not found: {}", e)))?;
+            let get_init: Symbol<GetInitFn> = library
+                .get(b"__cellbook_get_init")
                 .map_err(|e| Error::LibLoad(format!("Symbol not found: {}", e)))?;
 
             let raw_cells = get_cells();
@@ -117,7 +133,8 @@ impl LoadedLibrary {
             let sorted_cells: Vec<_> = indices.iter().map(|&i| cells[i].clone()).collect();
             let sorted_fns: Vec<_> = indices.iter().map(|&i| cell_fns[i]).collect();
 
-            (sorted_cells, sorted_fns)
+            let (init_name, init_line, init_fn) = get_init();
+            (sorted_cells, sorted_fns, init_name, init_line, init_fn)
         };
 
         self.temp_paths.push(unique_path.clone());
@@ -125,6 +142,9 @@ impl LoadedLibrary {
         self.loaded_path = unique_path;
         self.cells = cells;
         self.cell_fns = cell_fns;
+        self.init_name = init_name;
+        self.init_line = init_line;
+        self.init_fn = init_fn;
 
         Ok(())
     }
@@ -149,6 +169,19 @@ impl LoadedLibrary {
         );
 
         future.await.map_err(|e| Error::CellExec(e.to_string()))
+    }
+
+    pub async fn run_init(&self) -> Result<()> {
+        let future = (self.init_fn)();
+        future.await.map_err(|e| Error::CellExec(e.to_string()))
+    }
+
+    pub fn init_name(&self) -> &str {
+        &self.init_name
+    }
+
+    pub fn init_line(&self) -> u32 {
+        self.init_line
     }
 
     #[allow(dead_code)]

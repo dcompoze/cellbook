@@ -84,22 +84,46 @@ pub fn cell(_attr: TokenStream, item: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-/// Generates cell discovery exports for the dylib.
+/// Marks an async function as the required cellbook init entrypoint.
 ///
-/// Call once at the end of `cellbook.rs`.
+/// The macro:
+/// - Keeps the function as-is (arbitrary function name)
+/// - Exports `__cellbook_get_cells`
+/// - Exports `__cellbook_get_init`
 ///
 /// ```ignore
-/// cellbook!();
+/// #[init]
+/// async fn setup() -> Result<()> {
+///     Ok(())
+/// }
 /// ```
-#[proc_macro]
-pub fn cellbook(input: TokenStream) -> TokenStream {
-    if !input.is_empty() {
-        return syn::Error::new(proc_macro2::Span::call_site(), "cellbook!() does not accept arguments")
-            .to_compile_error()
-            .into();
-    }
+#[proc_macro_attribute]
+pub fn init(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(item as ItemFn);
+    let fn_name = input.sig.ident.clone();
+    let fn_name_str = fn_name.to_string();
+    let wrapper_name = format_ident!("__cellbook_init_{}", fn_name_str);
+    let line = fn_name.span().start().line as u32;
+
+    let fn_vis = &input.vis;
+    let fn_sig = &input.sig;
+    let fn_block = &input.block;
+    let fn_attrs = &input.attrs;
 
     let expanded = quote! {
+        #(#fn_attrs)*
+        #fn_vis #fn_sig #fn_block
+
+        #[doc(hidden)]
+        #[unsafe(no_mangle)]
+        pub fn #wrapper_name() -> ::cellbook::futures::future::BoxFuture<'static, ::std::result::Result<(), Box<dyn ::std::error::Error + Send + Sync>>> {
+            Box::pin(async move {
+                #fn_name()
+                    .await
+                    .map_err(|e| -> Box<dyn ::std::error::Error + Send + Sync> { e.into() })
+            })
+        }
+
         #[unsafe(no_mangle)]
         pub extern "Rust" fn __cellbook_get_cells() -> Vec<(
             String,
@@ -115,6 +139,15 @@ pub fn cellbook(input: TokenStream) -> TokenStream {
                 .into_iter()
                 .map(|c| (c.name.to_string(), c.line, c.func))
                 .collect()
+        }
+
+        #[unsafe(no_mangle)]
+        pub extern "Rust" fn __cellbook_get_init() -> (
+            String,
+            u32,
+            fn() -> ::cellbook::futures::future::BoxFuture<'static, ::std::result::Result<(), Box<dyn ::std::error::Error + Send + Sync>>>
+        ) {
+            (#fn_name_str.to_string(), #line, #wrapper_name)
         }
     };
 

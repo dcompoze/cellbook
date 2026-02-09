@@ -1,5 +1,5 @@
 use anyhow::Result;
-use cellbook::{cell, cellbook, load, store};
+use cellbook::{cell, init, load, store};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -14,8 +14,13 @@ struct AnalysisResult {
     count: usize,
 }
 
-#[cell]
+#[init]
 async fn setup() -> Result<()> {
+    Ok(())
+}
+
+#[cell]
+async fn setup_data() -> Result<()> {
     let config = DemoConfig {
         threshold: 2.5,
         name: "demo".to_string(),
@@ -59,5 +64,3 @@ async fn report() -> Result<()> {
 
     Ok(())
 }
-
-cellbook!();

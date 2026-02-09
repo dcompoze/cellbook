@@ -1,7 +1,7 @@
 //! Unit testing example for cellbook cells.
 
 use anyhow::Result;
-use cellbook::{cell, cellbook, load, store};
+use cellbook::{cell, init, load, store};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -9,6 +9,11 @@ struct Stats {
     mean: f64,
     sum: f64,
     count: usize,
+}
+
+#[init]
+async fn setup() -> Result<()> {
+    Ok(())
 }
 
 #[cell]
@@ -41,8 +46,6 @@ async fn print_stats() -> Result<()> {
     );
     Ok(())
 }
-
-cellbook!();
 
 #[cfg(test)]
 mod tests {

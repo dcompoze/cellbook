@@ -160,6 +160,7 @@ pub fn handle_key(key: KeyEvent, app: &mut App, config: &AppConfig) -> Action {
     }
     if kb.run_cell.matches(key.code)
         && let Some(idx) = app.selected_cell_index()
+        && idx > 0
     {
         return Action::RunCell(idx);
     }

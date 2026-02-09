@@ -1,13 +1,18 @@
 //! Stock price analysis example.
 
 use anyhow::Result;
-use cellbook::{cell, cellbook, load, open_image_bytes, store};
+use cellbook::{cell, init, load, open_image_bytes, store};
 use plotters::prelude::*;
 use polars::prelude::*;
 use serde::{Deserialize, Serialize};
 
 fn plot_err<E: std::fmt::Debug>(e: E) -> std::io::Error {
     std::io::Error::other(format!("{:?}", e))
+}
+
+#[init]
+async fn setup() -> Result<()> {
+    Ok(())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -603,5 +608,3 @@ async fn summary() -> Result<()> {
 
     Ok(())
 }
-
-cellbook!();

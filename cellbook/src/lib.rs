@@ -13,7 +13,7 @@ mod macros;
 pub mod registry;
 pub mod test;
 
-pub use cellbook_macros::{cell, cellbook};
+pub use cellbook_macros::{cell, init};
 pub use context::CellContext;
 pub use errors::{ContextError, Error, Result};
 pub use futures;

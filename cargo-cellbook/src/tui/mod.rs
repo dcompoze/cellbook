@@ -39,9 +39,9 @@ pub async fn run(
         unsafe { std::env::set_var("CELLBOOK_IMAGE_VIEWER", viewer) };
     }
 
-    let cells: Vec<String> = lib.cells().iter().map(|c| c.name.clone()).collect();
-    let mut app = App::new(cells, app_config.general.show_timings);
+    let mut app = App::new(visible_cells(lib), app_config.general.show_timings);
     app.refresh_context(store::list());
+    run_cell_with_capture(lib, &mut app, 0).await;
 
     let mut events = EventHandler::new(event_rx, Duration::from_millis(100));
 
@@ -87,10 +87,13 @@ pub async fn run(
                             trigger_reload(&mut app, lib).await;
                         }
                         Action::Edit => {
-                            let line = app
-                                .selected_cell_index()
-                                .and_then(|i| lib.cells().get(i))
-                                .map(|c| c.line);
+                            let line = app.selected_cell_index().and_then(|i| {
+                                if i == 0 {
+                                    Some(lib.init_line())
+                                } else {
+                                    lib.cells().get(i - 1).map(|c| c.line)
+                                }
+                            });
                             events.stop();
                             edit_cellbook(line);
                             terminal = ratatui::init();
@@ -120,9 +123,8 @@ pub async fn run(
                     app.build_status = BuildStatus::Reloading;
                     match lib.reload() {
                         Ok(()) => {
-                            let cells: Vec<String> =
-                                lib.cells().iter().map(|c| c.name.clone()).collect();
-                            app.refresh_cells(cells);
+                            app.refresh_cells(visible_cells(lib));
+                            run_cell_with_capture(lib, &mut app, 0).await;
                             app.build_status = BuildStatus::Idle;
                         }
                         Err(e) => {
@@ -152,9 +154,8 @@ async fn trigger_reload(app: &mut App, lib: &mut LoadedLibrary) {
             app.build_status = BuildStatus::Reloading;
             match lib.reload() {
                 Ok(()) => {
-                    let cells: Vec<String> =
-                        lib.cells().iter().map(|c| c.name.clone()).collect();
-                    app.refresh_cells(cells);
+                    app.refresh_cells(visible_cells(lib));
+                    run_cell_with_capture(lib, app, 0).await;
                     app.build_status = BuildStatus::Idle;
                 }
                 Err(e) => {
@@ -182,7 +183,11 @@ async fn run_cell_with_capture(lib: &LoadedLibrary, app: &mut App, idx: usize) {
 
     // Capture stdout during cell execution.
     let (captured, result) = capture_stdout(|| async {
-        lib.run_cell(&cell_name).await
+        if idx == 0 {
+            lib.run_init().await
+        } else {
+            lib.run_cell(&cell_name).await
+        }
     })
     .await;
 
@@ -210,6 +215,13 @@ async fn run_cell_with_capture(lib: &LoadedLibrary, app: &mut App, idx: usize) {
 
     app.refresh_context(store::list());
     app.executing = false;
+}
+
+fn visible_cells(lib: &LoadedLibrary) -> Vec<String> {
+    let mut cells = Vec::with_capacity(lib.cells().len() + 1);
+    cells.push(lib.init_name().to_string());
+    cells.extend(lib.cells().iter().map(|c| c.name.clone()));
+    cells
 }
 
 /// Capture stdout during execution of an async closure.
