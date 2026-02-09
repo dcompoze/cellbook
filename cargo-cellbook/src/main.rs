@@ -110,15 +110,15 @@ fn init_project(name: &str) -> Result<()> {
         r#"[package]
 name = "{name}"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
 path = "cellbook.rs"
 
 [dependencies]
-anyhow = "*"
-cellbook = "*"
+anyhow = "1"
+cellbook = "0"
 "#
     );
     fs::write(project_path.join("Cargo.toml"), cargo_toml)?;

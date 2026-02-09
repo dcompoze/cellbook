@@ -1,5 +1,5 @@
 [package]
-edition = "2021"
+edition = "2024"
 name = "plot-timeseries"
 version = "0.1.0"
 
@@ -10,6 +10,6 @@ path = "cellbook.rs"
 [dependencies]
 anyhow = "1"
 cellbook = { path = "../../cellbook" }
-polars = { version = "0.51", features = ["lazy", "csv", "dtype-date"] }
 plotters = "0.3"
+polars = { version = "0.51", features = ["lazy", "csv", "dtype-date"] }
 serde = { version = "1", features = ["derive"] }

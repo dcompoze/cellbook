@@ -13,6 +13,7 @@ use ratatui::crossterm::style::Print;
 use ratatui::crossterm::terminal::{Clear, ClearType};
 #[cfg(windows)]
 use ratatui::crossterm::QueueableCommand;
+use serde::Deserialize;
 use notify::{RecommendedWatcher, RecursiveMode};
 use notify_debouncer_mini::{DebouncedEventKind, Debouncer, new_debouncer};
 use tokio::process::Command;
@@ -43,6 +44,49 @@ impl ratatui::crossterm::Command for DeleteLines {
 
 fn get_mtime(path: &Path) -> Option<SystemTime> {
     std::fs::metadata(path).ok()?.modified().ok()
+}
+
+#[derive(Debug, Deserialize)]
+struct CargoMetadata {
+    workspace_root: PathBuf,
+}
+
+fn workspace_root_from_metadata() -> Option<PathBuf> {
+    let output = std::process::Command::new("cargo")
+        .args(["metadata", "--format-version", "1", "--no-deps"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let metadata = serde_json::from_slice::<CargoMetadata>(&output.stdout).ok()?;
+    Some(metadata.workspace_root)
+}
+
+fn has_lockfile() -> bool {
+    if Path::new("Cargo.lock").exists() {
+        return true;
+    }
+
+    workspace_root_from_metadata()
+        .map(|root| root.join("Cargo.lock").exists())
+        .unwrap_or(false)
+}
+
+fn cargo_build_args() -> Vec<&'static str> {
+    let mut args = vec!["build", "--lib"];
+    if has_lockfile() {
+        args.push("--locked");
+    }
+    args
+}
+
+fn cargo_build_display_cmd() -> String {
+    format!("cargo {}", cargo_build_args().join(" "))
 }
 
 /// Check if any paths have changed since last recorded.
@@ -185,8 +229,9 @@ pub async fn start_watcher(
 }
 
 pub async fn rebuild() -> Result<()> {
+    let args = cargo_build_args();
     let output = Command::new("cargo")
-        .args(["build", "--lib"])
+        .args(&args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()
@@ -202,7 +247,7 @@ pub async fn rebuild() -> Result<()> {
 
 pub async fn initial_build() -> Result<()> {
     let spinner_chars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-    let build_cmd = "cargo build --lib";
+    let build_cmd = cargo_build_display_cmd();
     let latest_output = Arc::new(Mutex::new(String::new()));
 
     // Reserve two terminal lines that we redraw in-place:
@@ -248,8 +293,9 @@ pub async fn initial_build() -> Result<()> {
 
     let output_for_reader = Arc::clone(&latest_output);
     let build_result = tokio::task::spawn_blocking(move || -> Result<()> {
+        let args = cargo_build_args();
         let mut child = std::process::Command::new("cargo")
-            .args(["build", "--lib"])
+            .args(&args)
             .stdout(Stdio::null())
             .stderr(Stdio::piped())
             .spawn()?;
