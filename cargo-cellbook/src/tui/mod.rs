@@ -79,6 +79,14 @@ pub async fn run(
                                 events.resume();
                             }
                         }
+                        Action::ViewBuildError => {
+                            if let BuildStatus::BuildError(error) = &app.build_status {
+                                events.stop();
+                                view_output_in_pager(error);
+                                terminal = ratatui::init();
+                                events.resume();
+                            }
+                        }
                         Action::ClearContext => {
                             store::clear();
                             app.refresh_context(store::list());

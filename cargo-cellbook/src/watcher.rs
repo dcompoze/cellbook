@@ -1,10 +1,18 @@
 //! File watching and automatic rebuild for hot-reloading.
 
 use std::collections::HashMap;
+use std::io::BufRead;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
 
+use ratatui::crossterm::cursor::{MoveToColumn, MoveUp};
+use ratatui::crossterm::execute;
+use ratatui::crossterm::style::Print;
+use ratatui::crossterm::terminal::{Clear, ClearType};
+#[cfg(windows)]
+use ratatui::crossterm::QueueableCommand;
 use notify::{RecommendedWatcher, RecursiveMode};
 use notify_debouncer_mini::{DebouncedEventKind, Debouncer, new_debouncer};
 use tokio::process::Command;
@@ -15,6 +23,23 @@ use crate::runner::TuiEvent;
 use crate::tui::config::GeneralConfig;
 
 type NotifyDebouncer = Debouncer<RecommendedWatcher>;
+
+struct DeleteLines(pub u16);
+
+impl ratatui::crossterm::Command for DeleteLines {
+    fn write_ansi(&self, f: &mut impl std::fmt::Write) -> std::fmt::Result {
+        write!(f, "\x1b[{}M", self.0)
+    }
+
+    #[cfg(windows)]
+    fn execute_winapi(&self) -> std::io::Result<()> {
+        // Best-effort fallback for older Windows consoles without ANSI delete-line support.
+        let mut stdout = std::io::stdout();
+        stdout.queue(MoveUp(self.0))?;
+        stdout.queue(ratatui::crossterm::terminal::ScrollUp(self.0))?;
+        Ok(())
+    }
+}
 
 fn get_mtime(path: &Path) -> Option<SystemTime> {
     std::fs::metadata(path).ok()?.modified().ok()
@@ -176,16 +201,41 @@ pub async fn rebuild() -> Result<()> {
 }
 
 pub async fn initial_build() -> Result<()> {
-    use std::io::Write;
-
     let spinner_chars = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    let build_cmd = "cargo build --lib";
+    let latest_output = Arc::new(Mutex::new(String::new()));
+
+    // Reserve two terminal lines that we redraw in-place:
+    // line 1: spinner + command
+    // line 2: latest output line from the build stream
+    let _ = execute!(
+        std::io::stdout(),
+        Print(format!("{} Building notebook: {}\n\n", spinner_chars[0], build_cmd))
+    );
+
     let (stop_tx, mut stop_rx) = oneshot::channel::<()>();
 
+    let output_for_spinner = Arc::clone(&latest_output);
     let spinner_handle = tokio::spawn(async move {
         let mut idx = 0;
         loop {
-            print!("\r{} Building...", spinner_chars[idx]);
-            let _ = std::io::stdout().flush();
+            let output_line = output_for_spinner
+                .lock()
+                .map(|s| s.clone())
+                .unwrap_or_default();
+
+            let _ = execute!(
+                std::io::stdout(),
+                MoveUp(2),
+                MoveToColumn(0),
+                Clear(ClearType::CurrentLine),
+                Print(format!("{} Building notebook: {}", spinner_chars[idx], build_cmd)),
+                Print("\n"),
+                MoveToColumn(0),
+                Clear(ClearType::CurrentLine),
+                Print(output_line),
+                Print("\n")
+            );
             idx = (idx + 1) % spinner_chars.len();
 
             tokio::select! {
@@ -194,14 +244,44 @@ pub async fn initial_build() -> Result<()> {
                 _ = tokio::time::sleep(Duration::from_millis(80)) => {}
             }
         }
-        print!("\r              \r");
-        let _ = std::io::stdout().flush();
     });
 
-    let result = rebuild().await;
+    let output_for_reader = Arc::clone(&latest_output);
+    let build_result = tokio::task::spawn_blocking(move || -> Result<()> {
+        let mut child = std::process::Command::new("cargo")
+            .args(["build", "--lib"])
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped())
+            .spawn()?;
+
+        let mut stderr_log = String::new();
+        if let Some(stderr) = child.stderr.take() {
+            let reader = std::io::BufReader::new(stderr);
+            for line in reader.lines() {
+                let line = line?;
+                if let Ok(mut latest) = output_for_reader.lock() {
+                    *latest = line.clone();
+                }
+                stderr_log.push_str(&line);
+                stderr_log.push('\n');
+            }
+        }
+
+        let status = child.wait()?;
+        if !status.success() {
+            return Err(Error::Build(stderr_log));
+        }
+
+        Ok(())
+    })
+    .await
+    .map_err(|e| Error::Watch(e.to_string()))?;
 
     let _ = stop_tx.send(());
     let _ = spinner_handle.await;
+    // Remove the two reserved lines entirely so follow-up output (including
+    // errors) is printed normally without empty spacer lines.
+    let _ = execute!(std::io::stdout(), MoveUp(2), DeleteLines(2));
 
-    result
+    build_result
 }

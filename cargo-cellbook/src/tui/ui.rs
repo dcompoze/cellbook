@@ -2,7 +2,7 @@
 
 use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph, Wrap};
 
@@ -54,10 +54,7 @@ fn render_cells(frame: &mut Frame, app: &mut App, area: Rect) {
             // Status indicator.
             let status_span = match &app.cell_statuses[i] {
                 CellStatus::Pending => Span::styled("[none]", Style::default().fg(Color::DarkGray)),
-                CellStatus::Running => Span::styled(
-                    "[running]",
-                    Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
-                ),
+                CellStatus::Running => Span::styled("[running]", Style::default().fg(Color::Yellow)),
                 CellStatus::Success => Span::styled("[success]", Style::default().fg(Color::Green)),
                 CellStatus::Error(_) => Span::styled("[error]", Style::default().fg(Color::Red)),
             };
@@ -104,11 +101,7 @@ fn render_cells(frame: &mut Frame, app: &mut App, area: Rect) {
                 .border_style(Style::default().fg(Color::White))
                 .title("Cells "),
         )
-        .highlight_style(
-            Style::default()
-                .bg(Color::Rgb(35, 37, 42))
-                .add_modifier(Modifier::BOLD),
-        );
+        .highlight_style(Style::default().bg(Color::Rgb(35, 37, 42)));
 
     frame.render_stateful_widget(list, area, &mut app.list_state);
 }
@@ -164,15 +157,9 @@ fn render_status_bar(frame: &mut Frame, app: &App, area: Rect) {
 
     let status = match &app.build_status {
         BuildStatus::Idle => Span::styled("Ready", Style::default().fg(Color::Green)),
-        BuildStatus::Building => Span::styled(
-            "Building",
-            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
-        ),
+        BuildStatus::Building => Span::styled("Building", Style::default().fg(Color::Yellow)),
         BuildStatus::Reloading => Span::styled("Reloading", Style::default().fg(Color::Cyan)),
-        BuildStatus::BuildError(_) => Span::styled(
-            "Build Error",
-            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-        ),
+        BuildStatus::BuildError(_) => Span::styled("[f] Failed", Style::default().fg(Color::Red)),
     };
 
     let cell_count = Span::styled(

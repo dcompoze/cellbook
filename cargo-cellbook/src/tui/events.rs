@@ -119,6 +119,7 @@ pub enum Action {
     RunCell(usize),
     ViewOutput,
     ViewError,
+    ViewBuildError,
     ClearContext,
     Reload,
     Edit,
@@ -143,6 +144,9 @@ pub fn handle_key(key: KeyEvent, app: &mut App, config: &AppConfig) -> Action {
     }
     if kb.view_error.matches(key.code) {
         return Action::ViewError;
+    }
+    if kb.view_build_error.matches(key.code) {
+        return Action::ViewBuildError;
     }
     if kb.reload.matches(key.code) {
         return Action::Reload;

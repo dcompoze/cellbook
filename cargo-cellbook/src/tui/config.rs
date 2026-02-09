@@ -42,6 +42,7 @@ pub struct Keybindings {
     pub clear_context: KeyBinding,
     pub view_output: KeyBinding,
     pub view_error: KeyBinding,
+    pub view_build_error: KeyBinding,
     pub reload: KeyBinding,
     pub edit: KeyBinding,
     pub run_cell: KeyBinding,
@@ -69,6 +70,7 @@ struct PartialKeybindings {
     clear_context: Option<KeyBinding>,
     view_output: Option<KeyBinding>,
     view_error: Option<KeyBinding>,
+    view_build_error: Option<KeyBinding>,
     reload: Option<KeyBinding>,
     edit: Option<KeyBinding>,
     run_cell: Option<KeyBinding>,
@@ -83,6 +85,7 @@ impl Default for Keybindings {
             clear_context: KeyBinding::Single("x".into()),
             view_output: KeyBinding::Single("o".into()),
             view_error: KeyBinding::Single("e".into()),
+            view_build_error: KeyBinding::Single("f".into()),
             reload: KeyBinding::Single("r".into()),
             edit: KeyBinding::Single("E".into()),
             run_cell: KeyBinding::Single("Enter".into()),
@@ -183,6 +186,9 @@ fn merge(base: &mut AppConfig, patch: PartialAppConfig) {
         }
         if let Some(v) = keybindings.view_error {
             base.keybindings.view_error = v;
+        }
+        if let Some(v) = keybindings.view_build_error {
+            base.keybindings.view_build_error = v;
         }
         if let Some(v) = keybindings.reload {
             base.keybindings.reload = v;
@@ -307,6 +313,7 @@ navigate_down = ["Down", "n"]
         let config: AppConfig = toml::from_str(toml).unwrap();
         assert!(config.general.show_timings);
         assert!(config.keybindings.quit.matches(KeyCode::Char('q')));
+        assert!(config.keybindings.view_build_error.matches(KeyCode::Char('f')));
         assert!(config.keybindings.navigate_down.matches(KeyCode::Down));
         assert!(config.keybindings.navigate_down.matches(KeyCode::Char('n')));
     }
@@ -321,6 +328,7 @@ navigate_down = ["Down", "n"]
         assert!(serialized.contains("show_timings = false"));
         assert!(serialized.contains("[keybindings]"));
         assert!(serialized.contains("quit"));
+        assert!(serialized.contains("view_build_error = \"f\""));
         // Verify arrays are on single lines.
         assert!(serialized.contains(r#"navigate_down = ["Down", "j"]"#));
         assert!(serialized.contains(r#"navigate_up = ["Up", "k"]"#));
