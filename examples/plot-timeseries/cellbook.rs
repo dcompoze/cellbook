@@ -1,7 +1,7 @@
 //! Stock price analysis example.
 
 use anyhow::Result;
-use cellbook::{cell, cellbook, load, open_image_bytes, store, Config};
+use cellbook::{cell, cellbook, load, open_image_bytes, store};
 use plotters::prelude::*;
 use polars::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -604,4 +604,4 @@ async fn summary() -> Result<()> {
     Ok(())
 }
 
-cellbook!(Config::default().show_timings(true));
+cellbook!();

@@ -84,22 +84,20 @@ pub fn cell(_attr: TokenStream, item: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-/// Generates cell discovery and config exports for the dylib.
+/// Generates cell discovery exports for the dylib.
 ///
 /// Call once at the end of `cellbook.rs`.
 ///
 /// ```ignore
 /// cellbook!();
-/// cellbook!(Config::default().auto_reload(false));
 /// ```
 #[proc_macro]
 pub fn cellbook(input: TokenStream) -> TokenStream {
-    let config_expr = if input.is_empty() {
-        quote! { ::cellbook::Config::default() }
-    } else {
-        let expr = parse_macro_input!(input as syn::Expr);
-        quote! { #expr }
-    };
+    if !input.is_empty() {
+        return syn::Error::new(proc_macro2::Span::call_site(), "cellbook!() does not accept arguments")
+            .to_compile_error()
+            .into();
+    }
 
     let expanded = quote! {
         #[unsafe(no_mangle)]
@@ -117,11 +115,6 @@ pub fn cellbook(input: TokenStream) -> TokenStream {
                 .into_iter()
                 .map(|c| (c.name.to_string(), c.line, c.func))
                 .collect()
-        }
-
-        #[unsafe(no_mangle)]
-        pub extern "Rust" fn __cellbook_get_config() -> ::cellbook::Config {
-            #config_expr
         }
     };
 

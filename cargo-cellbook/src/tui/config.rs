@@ -1,23 +1,37 @@
-//! TUI configuration for keybindings.
+//! App and runtime configuration.
 
 use std::path::PathBuf;
 
 use ratatui::crossterm::event::KeyCode;
 use serde::{Deserialize, Serialize};
 
-/// TUI configuration.
+/// App configuration.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
-pub struct TuiConfig {
+pub struct AppConfig {
     pub general: GeneralConfig,
     pub keybindings: Keybindings,
 }
 
 /// General settings.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct GeneralConfig {
+    pub auto_reload: bool,
+    pub debounce_ms: u32,
     pub image_viewer: Option<String>,
+    pub show_timings: bool,
+}
+
+impl Default for GeneralConfig {
+    fn default() -> Self {
+        Self {
+            auto_reload: true,
+            debounce_ms: 500,
+            image_viewer: None,
+            show_timings: false,
+        }
+    }
 }
 
 /// Keybinding configuration.
@@ -33,6 +47,33 @@ pub struct Keybindings {
     pub run_cell: KeyBinding,
     pub navigate_down: KeyBinding,
     pub navigate_up: KeyBinding,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+struct PartialAppConfig {
+    general: Option<PartialGeneralConfig>,
+    keybindings: Option<PartialKeybindings>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+struct PartialGeneralConfig {
+    auto_reload: Option<bool>,
+    debounce_ms: Option<u32>,
+    image_viewer: Option<String>,
+    show_timings: Option<bool>,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+struct PartialKeybindings {
+    quit: Option<KeyBinding>,
+    clear_context: Option<KeyBinding>,
+    view_output: Option<KeyBinding>,
+    view_error: Option<KeyBinding>,
+    reload: Option<KeyBinding>,
+    edit: Option<KeyBinding>,
+    run_cell: Option<KeyBinding>,
+    navigate_down: Option<KeyBinding>,
+    navigate_up: Option<KeyBinding>,
 }
 
 impl Default for Keybindings {
@@ -105,28 +146,90 @@ fn parse_key(s: &str) -> Option<KeyCode> {
 }
 
 /// Get the path to the config file.
-fn config_path() -> Option<PathBuf> {
+fn global_config_path() -> Option<PathBuf> {
     dirs::config_dir().map(|p| p.join("cellbook").join("config.toml"))
 }
 
-/// Load the TUI configuration.
-/// Returns defaults if the config file doesn't exist or can't be parsed.
-pub fn load() -> TuiConfig {
-    let Some(path) = config_path() else {
-        return TuiConfig::default();
+/// Get the path to the local project config file.
+fn local_config_path() -> Option<PathBuf> {
+    std::env::current_dir().ok().map(|p| p.join("Cellbook.toml"))
+}
+
+fn merge(base: &mut AppConfig, patch: PartialAppConfig) {
+    if let Some(general) = patch.general {
+        if let Some(auto_reload) = general.auto_reload {
+            base.general.auto_reload = auto_reload;
+        }
+        if let Some(debounce_ms) = general.debounce_ms {
+            base.general.debounce_ms = debounce_ms;
+        }
+        if let Some(image_viewer) = general.image_viewer {
+            base.general.image_viewer = Some(image_viewer);
+        }
+        if let Some(show_timings) = general.show_timings {
+            base.general.show_timings = show_timings;
+        }
+    }
+
+    if let Some(keybindings) = patch.keybindings {
+        if let Some(v) = keybindings.quit {
+            base.keybindings.quit = v;
+        }
+        if let Some(v) = keybindings.clear_context {
+            base.keybindings.clear_context = v;
+        }
+        if let Some(v) = keybindings.view_output {
+            base.keybindings.view_output = v;
+        }
+        if let Some(v) = keybindings.view_error {
+            base.keybindings.view_error = v;
+        }
+        if let Some(v) = keybindings.reload {
+            base.keybindings.reload = v;
+        }
+        if let Some(v) = keybindings.edit {
+            base.keybindings.edit = v;
+        }
+        if let Some(v) = keybindings.run_cell {
+            base.keybindings.run_cell = v;
+        }
+        if let Some(v) = keybindings.navigate_down {
+            base.keybindings.navigate_down = v;
+        }
+        if let Some(v) = keybindings.navigate_up {
+            base.keybindings.navigate_up = v;
+        }
+    }
+}
+
+fn merge_file(config: &mut AppConfig, path: Option<PathBuf>) {
+    let Some(path) = path else {
+        return;
     };
 
-    let Ok(contents) = std::fs::read_to_string(&path) else {
-        return TuiConfig::default();
+    let Ok(contents) = std::fs::read_to_string(path) else {
+        return;
     };
 
-    toml::from_str(&contents).unwrap_or_default()
+    let Ok(partial) = toml::from_str::<PartialAppConfig>(&contents) else {
+        return;
+    };
+
+    merge(config, partial);
+}
+
+/// Load app configuration from defaults, global, then local.
+pub fn load() -> AppConfig {
+    let mut config = AppConfig::default();
+    merge_file(&mut config, global_config_path());
+    merge_file(&mut config, local_config_path());
+    config
 }
 
 /// Ensure the config file exists with default values.
 /// Creates the config directory and file if they don't exist.
 pub fn ensure_config_exists() {
-    let Some(path) = config_path() else {
+    let Some(path) = global_config_path() else {
         return;
     };
 
@@ -138,7 +241,7 @@ pub fn ensure_config_exists() {
         let _ = std::fs::create_dir_all(parent);
     }
 
-    let config = TuiConfig::default();
+    let config = AppConfig::default();
     if let Ok(contents) = toml::to_string(&config) {
         let _ = std::fs::write(&path, contents);
     }
@@ -194,11 +297,15 @@ mod tests {
     #[test]
     fn test_config_deserialize() {
         let toml = r#"
+[general]
+show_timings = true
+
 [keybindings]
 quit = "q"
 navigate_down = ["Down", "n"]
 "#;
-        let config: TuiConfig = toml::from_str(toml).unwrap();
+        let config: AppConfig = toml::from_str(toml).unwrap();
+        assert!(config.general.show_timings);
         assert!(config.keybindings.quit.matches(KeyCode::Char('q')));
         assert!(config.keybindings.navigate_down.matches(KeyCode::Down));
         assert!(config.keybindings.navigate_down.matches(KeyCode::Char('n')));
@@ -206,12 +313,83 @@ navigate_down = ["Down", "n"]
 
     #[test]
     fn test_default_config_serializes() {
-        let config = TuiConfig::default();
+        let config = AppConfig::default();
         let serialized = toml::to_string(&config).unwrap();
+        assert!(serialized.contains("[general]"));
+        assert!(serialized.contains("auto_reload = true"));
+        assert!(serialized.contains("debounce_ms = 500"));
+        assert!(serialized.contains("show_timings = false"));
         assert!(serialized.contains("[keybindings]"));
         assert!(serialized.contains("quit"));
         // Verify arrays are on single lines.
         assert!(serialized.contains(r#"navigate_down = ["Down", "j"]"#));
         assert!(serialized.contains(r#"navigate_up = ["Up", "k"]"#));
+    }
+
+    #[test]
+    fn test_merge_partial_general_fields() {
+        let mut config = AppConfig::default();
+        merge(
+            &mut config,
+            PartialAppConfig {
+                general: Some(PartialGeneralConfig {
+                    show_timings: Some(true),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+        );
+
+        assert!(config.general.show_timings);
+        assert!(config.general.auto_reload);
+        assert_eq!(config.general.debounce_ms, 500);
+    }
+
+    #[test]
+    fn test_merge_local_overrides_global() {
+        let mut config = AppConfig::default();
+        merge(
+            &mut config,
+            toml::from_str::<PartialAppConfig>(
+                r#"
+[general]
+debounce_ms = 900
+show_timings = false
+"#,
+            )
+            .unwrap(),
+        );
+
+        merge(
+            &mut config,
+            toml::from_str::<PartialAppConfig>(
+                r#"
+[general]
+show_timings = true
+"#,
+            )
+            .unwrap(),
+        );
+
+        assert_eq!(config.general.debounce_ms, 900);
+        assert!(config.general.show_timings);
+    }
+
+    #[test]
+    fn test_merge_keybindings_is_field_level() {
+        let mut config = AppConfig::default();
+        merge(
+            &mut config,
+            toml::from_str::<PartialAppConfig>(
+                r#"
+[keybindings]
+quit = "Q"
+"#,
+            )
+            .unwrap(),
+        );
+
+        assert!(config.keybindings.quit.matches(KeyCode::Char('Q')));
+        assert!(config.keybindings.reload.matches(KeyCode::Char('r')));
     }
 }

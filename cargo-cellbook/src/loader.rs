@@ -17,28 +17,6 @@ pub struct CellInfo {
     pub line: u32,
 }
 
-/// Configuration for a cellbook project.
-/// Must match the layout of `cellbook::Config`.
-#[derive(Clone, Debug)]
-#[allow(unused)]
-pub struct Config {
-    pub auto_reload: bool,
-    pub debounce_ms: u32,
-    pub image_viewer: Option<String>,
-    pub show_timings: bool,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            auto_reload: true,
-            debounce_ms: 500,
-            image_viewer: None,
-            show_timings: false,
-        }
-    }
-}
-
 type CellFn = fn(
     store::StoreFn,
     store::LoadFn,
@@ -47,7 +25,6 @@ type CellFn = fn(
 ) -> BoxFuture<'static, std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>>;
 
 type GetCellsFn = unsafe extern "Rust" fn() -> Vec<(String, u32, CellFn)>;
-type GetConfigFn = unsafe extern "Rust" fn() -> Config;
 
 pub struct LoadedLibrary {
     _library: Library,
@@ -57,7 +34,6 @@ pub struct LoadedLibrary {
     lib_path: PathBuf,
     loaded_path: PathBuf,
     temp_paths: Vec<PathBuf>,
-    config: Config,
 }
 
 impl Drop for LoadedLibrary {
@@ -74,7 +50,7 @@ impl LoadedLibrary {
         let library = unsafe { Library::new(lib_path) }
             .map_err(|e| Error::LibLoad(format!("Failed to load {}: {}", lib_path.display(), e)))?;
 
-        let (cells, cell_fns, config) = unsafe {
+        let (cells, cell_fns) = unsafe {
             let get_cells: Symbol<GetCellsFn> = library
                 .get(b"__cellbook_get_cells")
                 .map_err(|e| Error::LibLoad(format!("Symbol not found: {}", e)))?;
@@ -94,12 +70,7 @@ impl LoadedLibrary {
             let sorted_cells: Vec<_> = indices.iter().map(|&i| cells[i].clone()).collect();
             let sorted_fns: Vec<_> = indices.iter().map(|&i| cell_fns[i]).collect();
 
-            let config = match library.get::<GetConfigFn>(b"__cellbook_get_config") {
-                Ok(get_config) => get_config(),
-                Err(_) => Config::default(),
-            };
-
-            (sorted_cells, sorted_fns, config)
+            (sorted_cells, sorted_fns)
         };
 
         Ok(LoadedLibrary {
@@ -110,7 +81,6 @@ impl LoadedLibrary {
             lib_path: lib_path.to_path_buf(),
             loaded_path: lib_path.to_path_buf(),
             temp_paths: Vec::new(),
-            config,
         })
     }
 
@@ -127,7 +97,7 @@ impl LoadedLibrary {
             Error::LibLoad(format!("Failed to load {}: {}", unique_path.display(), e))
         })?;
 
-        let (cells, cell_fns, config) = unsafe {
+        let (cells, cell_fns) = unsafe {
             let get_cells: Symbol<GetCellsFn> = library
                 .get(b"__cellbook_get_cells")
                 .map_err(|e| Error::LibLoad(format!("Symbol not found: {}", e)))?;
@@ -147,12 +117,7 @@ impl LoadedLibrary {
             let sorted_cells: Vec<_> = indices.iter().map(|&i| cells[i].clone()).collect();
             let sorted_fns: Vec<_> = indices.iter().map(|&i| cell_fns[i]).collect();
 
-            let config = match library.get::<GetConfigFn>(b"__cellbook_get_config") {
-                Ok(get_config) => get_config(),
-                Err(_) => Config::default(),
-            };
-
-            (sorted_cells, sorted_fns, config)
+            (sorted_cells, sorted_fns)
         };
 
         self.temp_paths.push(unique_path.clone());
@@ -160,7 +125,6 @@ impl LoadedLibrary {
         self.loaded_path = unique_path;
         self.cells = cells;
         self.cell_fns = cell_fns;
-        self.config = config;
 
         Ok(())
     }
@@ -192,9 +156,6 @@ impl LoadedLibrary {
         &self.lib_path
     }
 
-    pub fn config(&self) -> &Config {
-        &self.config
-    }
 }
 
 pub fn find_dylib_path() -> Result<PathBuf> {

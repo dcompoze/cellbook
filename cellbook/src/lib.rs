@@ -6,7 +6,6 @@
 //! Values in the context store are serialized with postcard.
 //! Stored types must implement `Serialize` and loaded types must implement `DeserializeOwned`.
 
-pub mod config;
 pub mod context;
 pub mod errors;
 pub mod image;
@@ -15,7 +14,6 @@ pub mod registry;
 pub mod test;
 
 pub use cellbook_macros::{cell, cellbook};
-pub use config::Config;
 pub use context::CellContext;
 pub use errors::{ContextError, Error, Result};
 pub use futures;

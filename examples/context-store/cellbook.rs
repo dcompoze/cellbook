@@ -1,5 +1,5 @@
 use anyhow::Result;
-use cellbook::{cell, cellbook, load, store, Config};
+use cellbook::{cell, cellbook, load, store};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,4 +60,4 @@ async fn report() -> Result<()> {
     Ok(())
 }
 
-cellbook!(Config::default().show_timings(true));
+cellbook!();

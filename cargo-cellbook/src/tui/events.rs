@@ -9,7 +9,7 @@ use tokio::sync::mpsc;
 
 use crate::runner::TuiEvent;
 
-use super::config::TuiConfig;
+use super::config::AppConfig;
 use super::state::App;
 
 /// Unified event type for the TUI.
@@ -125,7 +125,7 @@ pub enum Action {
 }
 
 /// Process a key event and return the action.
-pub fn handle_key(key: KeyEvent, app: &mut App, config: &TuiConfig) -> Action {
+pub fn handle_key(key: KeyEvent, app: &mut App, config: &AppConfig) -> Action {
     if key.kind != KeyEventKind::Press {
         return Action::None;
     }

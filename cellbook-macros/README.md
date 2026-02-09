@@ -7,4 +7,4 @@ Exported macros:
 | Macro | Description |
 |-------|-------------|
 | `#[cell]` | Marks an async function as a notebook cell |
-| `cellbook!()` | Exports registered cells and configuration |
+| `cellbook!()` | Exports registered cells |

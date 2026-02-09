@@ -32,10 +32,10 @@ cargo cellbook run
 
 ## Notebook structure
 
-The notebook consists of individual cells which are loaded in source order and the `cellbook!(Config::default())` invocation which sets up the notebook with configuration options.
+The notebook consists of individual cells which are loaded in source order and a `cellbook!()` invocation which exports registered cells.
 
 ```rust
-use cellbook::{cell, cellbook, load, store, Config, Result};
+use cellbook::{cell, cellbook, load, store, Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -64,7 +64,7 @@ async fn compute_stats() -> Result<()> {
     Ok(())
 }
 
-cellbook!(Config::default());
+cellbook!();
 ```
 
 ## Context store
@@ -102,24 +102,23 @@ let data: Vec<f64> = consume!(data)?;
 
 ## Configuration
 
-The `cellbook!()` macro accepts a `Config` struct with builder-style methods:
+Configuration is loaded in the following order:
 
-```rust
-use cellbook::{cellbook, Config};
+- Built-in defaults
+- Global config at `$XDG_CONFIG_HOME/cellbook/config.toml` (or platform-specific config dir)
+- Local config at `./Cellbook.toml`
 
-cellbook!(
-    Config::default()
-        .auto_reload(true)
-        .debounce_ms(500)
-        .show_timings(true)
-        .image_viewer("eog")
-);
-```
-The TUI runner reads global configuration from `$XDG_CONFIG_HOME/cellbook/config.toml` (or the platform-specific config directory).
+Only fields present in a config file are overridden.
 
-This file is created with default values on first run:
+The global configuration file is created with default values on first run:
 
 ```toml
+[general]
+auto_reload = true
+debounce_ms = 500
+show_timings = false
+#image_viewer = "eog"
+
 [keybindings]
 quit = "q"
 clear_context = "x"

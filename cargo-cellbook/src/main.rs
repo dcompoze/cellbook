@@ -62,6 +62,10 @@ async fn main() {
 }
 
 async fn run_project() -> Result<()> {
+    // Load merged app config once (defaults <- global <- local) and reuse it.
+    tui::config::ensure_config_exists();
+    let app_config = tui::config::load();
+
     // Find the dylib path
     let lib_path = loader::find_dylib_path()?;
 
@@ -74,11 +78,11 @@ async fn run_project() -> Result<()> {
     // Set up event channel
     let (event_tx, event_rx) = mpsc::channel(32);
 
-    // Start file watcher (uses config for auto_reload and debounce_ms)
-    let watcher_handle = watcher::start_watcher(event_tx, lib.config()).await?;
+    // Start file watcher.
+    let watcher_handle = watcher::start_watcher(event_tx, &app_config.general).await?;
 
     // Run the TUI
-    tui::run(&mut lib, event_rx).await?;
+    tui::run(&mut lib, event_rx, app_config).await?;
 
     // Stop the watcher when TUI exits
     if let Some(handle) = watcher_handle {
@@ -121,7 +125,7 @@ cellbook = "*"
 
     // Create cellbook.rs with example cell
     let cellbook_rs = r#"use anyhow::Result;
-use cellbook::{cell, cellbook, Config};
+use cellbook::{cell, cellbook};
 
 #[cell]
 async fn hello() -> Result<()> {
@@ -129,7 +133,7 @@ async fn hello() -> Result<()> {
     Ok(())
 }
 
-cellbook!(Config::default());
+cellbook!();
 "#;
     fs::write(project_path.join("cellbook.rs"), cellbook_rs)?;
 

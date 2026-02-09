@@ -11,8 +11,8 @@ use tokio::process::Command;
 use tokio::sync::{mpsc, oneshot};
 
 use crate::errors::{Error, Result};
-use crate::loader::Config;
 use crate::runner::TuiEvent;
+use crate::tui::config::GeneralConfig;
 
 type NotifyDebouncer = Debouncer<RecommendedWatcher>;
 
@@ -54,10 +54,10 @@ impl WatcherHandle {
 
 /// Start watching source files and trigger rebuilds on changes.
 ///
-/// Returns `None` if `config.auto_reload` is false.
+/// Returns `None` if auto-reload is disabled.
 pub async fn start_watcher(
     event_tx: mpsc::Sender<TuiEvent>,
-    config: &Config,
+    config: &GeneralConfig,
 ) -> Result<Option<WatcherHandle>> {
     if !config.auto_reload {
         return Ok(None);

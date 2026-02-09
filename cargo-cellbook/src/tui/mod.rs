@@ -1,6 +1,6 @@
 //! Ratatui-based TUI for cellbook.
 
-mod config;
+pub(crate) mod config;
 mod events;
 mod state;
 mod ui;
@@ -26,27 +26,21 @@ use events::{handle_key, Action, AppEvent, EventHandler};
 use state::{App, BuildStatus, CellOutput, CellStatus};
 
 /// Run the TUI.
-pub async fn run(lib: &mut LoadedLibrary, event_rx: mpsc::Receiver<TuiEvent>) -> Result<()> {
+pub async fn run(
+    lib: &mut LoadedLibrary,
+    event_rx: mpsc::Receiver<TuiEvent>,
+    app_config: config::AppConfig,
+) -> Result<()> {
     let mut terminal = ratatui::init();
 
-    // Load TUI configuration and ensure default config file exists.
-    config::ensure_config_exists();
-    let tui_config = config::load();
-
     // Set image viewer env var for cells to use.
-    // Global config takes precedence over notebook config.
-    let image_viewer = tui_config
-        .general
-        .image_viewer
-        .as_ref()
-        .or(lib.config().image_viewer.as_ref());
-    if let Some(viewer) = image_viewer {
+    if let Some(viewer) = app_config.general.image_viewer.as_ref() {
         // SAFETY: Called once at startup before cells run.
         unsafe { std::env::set_var("CELLBOOK_IMAGE_VIEWER", viewer) };
     }
 
     let cells: Vec<String> = lib.cells().iter().map(|c| c.name.clone()).collect();
-    let mut app = App::new(cells, lib.config().show_timings);
+    let mut app = App::new(cells, app_config.general.show_timings);
     app.refresh_context(store::list());
 
     let mut events = EventHandler::new(event_rx, Duration::from_millis(100));
@@ -57,7 +51,7 @@ pub async fn run(lib: &mut LoadedLibrary, event_rx: mpsc::Receiver<TuiEvent>) ->
         if let Some(event) = events.next().await {
             match event {
                 AppEvent::Terminal(CrosstermEvent::Key(key)) => {
-                    let action = handle_key(key, &mut app, &tui_config);
+                    let action = handle_key(key, &mut app, &app_config);
                     match action {
                         Action::Quit => break,
                         Action::RunCell(idx) => {
