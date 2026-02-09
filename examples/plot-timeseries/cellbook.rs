@@ -1,6 +1,7 @@
 //! Stock price analysis example.
 
-use cellbook::{cell, cellbook, load, open_image_bytes, store, Config, Result};
+use anyhow::Result;
+use cellbook::{cell, cellbook, load, open_image_bytes, store, Config};
 use plotters::prelude::*;
 use polars::prelude::*;
 use serde::{Deserialize, Serialize};

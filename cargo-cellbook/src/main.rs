@@ -113,13 +113,15 @@ crate-type = ["cdylib", "rlib"]
 path = "cellbook.rs"
 
 [dependencies]
-cellbook = "0.1"
+anyhow = "*"
+cellbook = "*"
 "#
     );
     fs::write(project_path.join("Cargo.toml"), cargo_toml)?;
 
     // Create cellbook.rs with example cell
-    let cellbook_rs = r#"use cellbook::{cell, cellbook, Config, Result};
+    let cellbook_rs = r#"use anyhow::Result;
+use cellbook::{cell, cellbook, Config};
 
 #[cell]
 async fn hello() -> Result<()> {

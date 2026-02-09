@@ -1,4 +1,5 @@
-use cellbook::{cell, cellbook, load, store, Config, Result};
+use anyhow::Result;
+use cellbook::{cell, cellbook, load, store, Config};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

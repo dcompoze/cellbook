@@ -336,7 +336,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-cellbook"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "clap",
  "dirs",
@@ -377,7 +377,7 @@ dependencies = [
 
 [[package]]
 name = "cellbook"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "cellbook-macros",
  "futures",
@@ -390,7 +390,7 @@ dependencies = [
 
 [[package]]
 name = "cellbook-macros"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -539,6 +539,7 @@ checksum = "3d52eff69cd5e647efe296129160853a42795992097e8af39800e1060caeea9b"
 name = "context-store"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "cellbook",
  "serde",
 ]
@@ -2374,6 +2375,7 @@ dependencies = [
 name = "plot-timeseries"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "cellbook",
  "plotters",
  "polars",
@@ -4264,6 +4266,7 @@ checksum = "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
 name = "unit-test"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "cellbook",
  "serde",
  "tokio",

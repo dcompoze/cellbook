@@ -68,7 +68,9 @@ pub fn cell(_attr: TokenStream, item: TokenStream) -> TokenStream {
         ) -> ::cellbook::futures::future::BoxFuture<'static, ::std::result::Result<(), Box<dyn ::std::error::Error + Send + Sync>>> {
             let ctx = ::cellbook::CellContext::new(store_fn, load_fn, remove_fn, list_fn);
             Box::pin(async move {
-                #fn_name(&ctx).await.map_err(|e| Box::new(e) as Box<dyn ::std::error::Error + Send + Sync>)
+                #fn_name(&ctx)
+                    .await
+                    .map_err(|e| -> Box<dyn ::std::error::Error + Send + Sync> { e.into() })
             })
         }
 
