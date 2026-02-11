@@ -23,22 +23,56 @@ type CellFn = fn(
     store::RemoveFn,
     store::ListFn,
 ) -> BoxFuture<'static, std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>>;
-type InitFn =
-    fn() -> BoxFuture<'static, std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>>;
+type InitFn = fn() -> BoxFuture<'static, std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>>;
 
 type GetCellsFn = unsafe extern "Rust" fn() -> Vec<(String, u32, CellFn)>;
 type GetInitFn = unsafe extern "Rust" fn() -> (String, u32, InitFn);
 
+type CellResult = std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>;
+
+type LoadedSymbols = (Vec<CellInfo>, Vec<CellFn>, String, u32, InitFn);
+
+/// SAFETY: The caller must ensure the library exports valid `__cellbook_get_cells`
+/// and `__cellbook_get_init` symbols with the expected signatures.
+unsafe fn load_symbols(library: &Library) -> Result<LoadedSymbols> {
+    let get_cells: Symbol<GetCellsFn> = unsafe {
+        library
+            .get(b"__cellbook_get_cells")
+            .map_err(|e| Error::LibLoad(format!("Symbol not found: {}", e)))?
+    };
+    let get_init: Symbol<GetInitFn> = unsafe {
+        library
+            .get(b"__cellbook_get_init")
+            .map_err(|e| Error::LibLoad(format!("Symbol not found: {}", e)))?
+    };
+
+    let raw_cells = unsafe { get_cells() };
+    let mut cells = Vec::new();
+    let mut cell_fns = Vec::new();
+
+    for (name, line, func) in raw_cells {
+        cells.push(CellInfo { name, line });
+        cell_fns.push(func);
+    }
+
+    let mut indices: Vec<usize> = (0..cells.len()).collect();
+    indices.sort_by_key(|&i| cells[i].line);
+
+    let sorted_cells: Vec<_> = indices.iter().map(|&i| cells[i].clone()).collect();
+    let sorted_fns: Vec<_> = indices.iter().map(|&i| cell_fns[i]).collect();
+
+    let (init_name, init_line, init_fn) = unsafe { get_init() };
+    Ok((sorted_cells, sorted_fns, init_name, init_line, init_fn))
+}
+
 pub struct LoadedLibrary {
     _library: Library,
-    _old_libraries: Vec<Library>,
     cells: Vec<CellInfo>,
     cell_fns: Vec<CellFn>,
     init_name: String,
     init_line: u32,
     init_fn: InitFn,
     lib_path: PathBuf,
-    loaded_path: PathBuf,
     temp_paths: Vec<PathBuf>,
 }
 
@@ -56,43 +90,16 @@ impl LoadedLibrary {
         let library = unsafe { Library::new(lib_path) }
             .map_err(|e| Error::LibLoad(format!("Failed to load {}: {}", lib_path.display(), e)))?;
 
-        let (cells, cell_fns, init_name, init_line, init_fn) = unsafe {
-            let get_cells: Symbol<GetCellsFn> = library
-                .get(b"__cellbook_get_cells")
-                .map_err(|e| Error::LibLoad(format!("Symbol not found: {}", e)))?;
-            let get_init: Symbol<GetInitFn> = library
-                .get(b"__cellbook_get_init")
-                .map_err(|e| Error::LibLoad(format!("Symbol not found: {}", e)))?;
-
-            let raw_cells = get_cells();
-            let mut cells = Vec::new();
-            let mut cell_fns = Vec::new();
-
-            for (name, line, func) in raw_cells {
-                cells.push(CellInfo { name, line });
-                cell_fns.push(func);
-            }
-
-            let mut indices: Vec<usize> = (0..cells.len()).collect();
-            indices.sort_by_key(|&i| cells[i].line);
-
-            let sorted_cells: Vec<_> = indices.iter().map(|&i| cells[i].clone()).collect();
-            let sorted_fns: Vec<_> = indices.iter().map(|&i| cell_fns[i]).collect();
-
-            let (init_name, init_line, init_fn) = get_init();
-            (sorted_cells, sorted_fns, init_name, init_line, init_fn)
-        };
+        let (cells, cell_fns, init_name, init_line, init_fn) = unsafe { load_symbols(&library) }?;
 
         Ok(LoadedLibrary {
             _library: library,
-            _old_libraries: Vec::new(),
             cells,
             cell_fns,
             init_name,
             init_line,
             init_fn,
             lib_path: lib_path.to_path_buf(),
-            loaded_path: lib_path.to_path_buf(),
             temp_paths: Vec::new(),
         })
     }
@@ -110,36 +117,10 @@ impl LoadedLibrary {
             Error::LibLoad(format!("Failed to load {}: {}", unique_path.display(), e))
         })?;
 
-        let (cells, cell_fns, init_name, init_line, init_fn) = unsafe {
-            let get_cells: Symbol<GetCellsFn> = library
-                .get(b"__cellbook_get_cells")
-                .map_err(|e| Error::LibLoad(format!("Symbol not found: {}", e)))?;
-            let get_init: Symbol<GetInitFn> = library
-                .get(b"__cellbook_get_init")
-                .map_err(|e| Error::LibLoad(format!("Symbol not found: {}", e)))?;
+        let (cells, cell_fns, init_name, init_line, init_fn) = unsafe { load_symbols(&library) }?;
 
-            let raw_cells = get_cells();
-            let mut cells = Vec::new();
-            let mut cell_fns = Vec::new();
-
-            for (name, line, func) in raw_cells {
-                cells.push(CellInfo { name, line });
-                cell_fns.push(func);
-            }
-
-            let mut indices: Vec<usize> = (0..cells.len()).collect();
-            indices.sort_by_key(|&i| cells[i].line);
-
-            let sorted_cells: Vec<_> = indices.iter().map(|&i| cells[i].clone()).collect();
-            let sorted_fns: Vec<_> = indices.iter().map(|&i| cell_fns[i]).collect();
-
-            let (init_name, init_line, init_fn) = get_init();
-            (sorted_cells, sorted_fns, init_name, init_line, init_fn)
-        };
-
-        self.temp_paths.push(unique_path.clone());
+        self.temp_paths.push(unique_path);
         self._library = library;
-        self.loaded_path = unique_path;
         self.cells = cells;
         self.cell_fns = cell_fns;
         self.init_name = init_name;
@@ -153,7 +134,8 @@ impl LoadedLibrary {
         &self.cells
     }
 
-    pub async fn run_cell(&self, name: &str) -> Result<()> {
+    /// Create a future for running a cell without awaiting it.
+    pub fn cell_future(&self, name: &str) -> Result<BoxFuture<'static, CellResult>> {
         let idx = self
             .cells
             .iter()
@@ -161,19 +143,17 @@ impl LoadedLibrary {
             .ok_or_else(|| Error::LibLoad(format!("Cell '{}' not found", name)))?;
 
         let cell_fn = self.cell_fns[idx];
-        let future = cell_fn(
+        Ok(cell_fn(
             store::get_store_fn(),
             store::get_load_fn(),
             store::get_remove_fn(),
             store::get_list_fn(),
-        );
-
-        future.await.map_err(|e| Error::CellExec(e.to_string()))
+        ))
     }
 
-    pub async fn run_init(&self) -> Result<()> {
-        let future = (self.init_fn)();
-        future.await.map_err(|e| Error::CellExec(e.to_string()))
+    /// Create a future for running the init function without awaiting it.
+    pub fn init_future(&self) -> BoxFuture<'static, CellResult> {
+        (self.init_fn)()
     }
 
     pub fn init_name(&self) -> &str {
@@ -183,12 +163,6 @@ impl LoadedLibrary {
     pub fn init_line(&self) -> u32 {
         self.init_line
     }
-
-    #[allow(dead_code)]
-    pub fn path(&self) -> &Path {
-        &self.lib_path
-    }
-
 }
 
 pub fn find_dylib_path() -> Result<PathBuf> {
@@ -243,24 +217,15 @@ pub fn find_dylib_path() -> Result<PathBuf> {
 }
 
 fn extract_package_name(cargo_toml: &str) -> Result<String> {
-    let mut in_package = false;
-    for line in cargo_toml.lines() {
-        let line = line.trim();
-        if line == "[package]" {
-            in_package = true;
-        } else if line.starts_with('[') {
-            in_package = false;
-        } else if in_package
-            && line.starts_with("name")
-            && let Some(value) = line.split('=').nth(1)
-        {
-            let name = value.trim().trim_matches('"').trim_matches('\'');
-            return Ok(name.to_string());
-        }
-    }
-    Err(Error::LibLoad(
-        "Could not find package name in Cargo.toml".to_string(),
-    ))
+    let parsed: toml::Value =
+        toml::from_str(cargo_toml).map_err(|e| Error::LibLoad(format!("Invalid Cargo.toml: {}", e)))?;
+
+    parsed
+        .get("package")
+        .and_then(|p| p.get("name"))
+        .and_then(|n| n.as_str())
+        .map(String::from)
+        .ok_or_else(|| Error::LibLoad("Could not find package name in Cargo.toml".to_string()))
 }
 
 #[cfg(test)]

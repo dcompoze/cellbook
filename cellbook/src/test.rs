@@ -2,6 +2,9 @@
 //!
 //! Provides an in-memory store for testing cells without `cargo-cellbook`.
 //!
+//! Requires a single-threaded async runtime (the default for `#[tokio::test]`).
+//! Concurrent tests on separate threads are safe thanks to per-instance prefixes.
+//!
 //! ```ignore
 //! #[tokio::test]
 //! async fn test_my_cell() {
@@ -63,6 +66,7 @@ fn list() -> Vec<(String, String)> {
 ///
 /// Keys are automatically prefixed for isolation.
 /// Storage is cleaned up when the context is dropped.
+/// Nested contexts are supported via prefix save/restore.
 ///
 /// ```ignore
 /// let ctx = TestContext::default();
@@ -71,6 +75,7 @@ fn list() -> Vec<(String, String)> {
 /// ```
 pub struct TestContext {
     prefix: String,
+    previous_prefix: String,
     context: CellContext,
 }
 
@@ -78,9 +83,14 @@ impl TestContext {
     /// Create a test context with a custom prefix.
     pub fn new(prefix: impl Into<String>) -> Self {
         let prefix = prefix.into();
-        CURRENT_PREFIX.with(|p| *p.borrow_mut() = prefix.clone());
+        let previous_prefix = CURRENT_PREFIX.with(|p| {
+            let prev = p.borrow().clone();
+            *p.borrow_mut() = prefix.clone();
+            prev
+        });
         Self {
             prefix,
+            previous_prefix,
             context: CellContext::new(store, load, remove, list),
         }
     }
@@ -104,7 +114,9 @@ impl std::ops::Deref for TestContext {
 impl Drop for TestContext {
     fn drop(&mut self) {
         let prefix_with_sep = format!("{}:", self.prefix);
-        TEST_STORE.lock().retain(|k, _| !k.starts_with(&prefix_with_sep));
-        CURRENT_PREFIX.with(|p| p.borrow_mut().clear());
+        TEST_STORE
+            .lock()
+            .retain(|k, _| !k.starts_with(&prefix_with_sep));
+        CURRENT_PREFIX.with(|p| *p.borrow_mut() = self.previous_prefix.clone());
     }
 }

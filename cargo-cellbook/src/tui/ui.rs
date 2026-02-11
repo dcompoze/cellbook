@@ -4,12 +4,15 @@ use ratatui::Frame;
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Wrap};
 
 use super::state::{App, BuildStatus, CellStatus};
 
 /// Render the entire UI.
 pub fn render(frame: &mut Frame, app: &mut App) {
+    // Clear previous frame content so stale characters don't persist when indicator widths change.
+    frame.render_widget(Clear, frame.area());
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([

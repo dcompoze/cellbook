@@ -20,7 +20,7 @@ use tokio::process::Command;
 use tokio::sync::{mpsc, oneshot};
 
 use crate::errors::{Error, Result};
-use crate::runner::TuiEvent;
+use crate::tui::TuiEvent;
 use crate::tui::config::GeneralConfig;
 
 type NotifyDebouncer = Debouncer<RecommendedWatcher>;
@@ -190,7 +190,6 @@ pub async fn start_watcher(
                                 .filter(|e| matches!(e.kind, DebouncedEventKind::Any))
                                 .filter(|e| {
                                     e.path.extension().map(|ext| ext == "rs").unwrap_or(false)
-                                        || e.path.file_name().map(|n| n == "cellbook.rs").unwrap_or(false)
                                 })
                                 .filter_map(|e| e.path.canonicalize().ok())
                                 .collect();

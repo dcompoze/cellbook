@@ -8,8 +8,6 @@ pub enum Error {
     Build(String),
     #[error("Library load error: {0}")]
     LibLoad(String),
-    #[error("{0}")]
-    CellExec(String),
     #[error("No Cargo.toml found in current directory")]
     NoCargoToml,
     #[error("Watch error: {0}")]

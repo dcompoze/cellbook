@@ -1,7 +1,7 @@
 //! Ratatui-based TUI for cellbook.
 
 pub(crate) mod config;
-mod events;
+pub(crate) mod events;
 mod state;
 mod ui;
 
@@ -10,28 +10,38 @@ use std::process::Command;
 use std::time::{Duration, Instant};
 
 use gag::BufferRedirect;
+use ratatui::Terminal;
+use ratatui::backend::CrosstermBackend;
 use ratatui::crossterm::cursor::MoveTo;
 use ratatui::crossterm::event::Event as CrosstermEvent;
-use ratatui::crossterm::terminal::{Clear, ClearType};
-use ratatui::crossterm::ExecutableCommand;
+use ratatui::crossterm::terminal::{
+    Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode,
+    enable_raw_mode,
+};
+use ratatui::crossterm::{ExecutableCommand, execute};
 use tokio::sync::mpsc;
+use tokio::task::JoinHandle;
 
 use crate::errors::Result;
 use crate::loader::LoadedLibrary;
-use crate::runner::TuiEvent;
 use crate::store;
 use crate::watcher;
+
+pub use events::TuiEvent;
 
 use events::{handle_key, Action, AppEvent, EventHandler};
 use state::{App, BuildStatus, CellOutput, CellStatus};
 
+type AppTerminal = Terminal<CrosstermBackend<std::io::Stderr>>;
+
 /// Run the TUI.
 pub async fn run(
     lib: &mut LoadedLibrary,
+    event_tx: mpsc::Sender<TuiEvent>,
     event_rx: mpsc::Receiver<TuiEvent>,
     app_config: config::AppConfig,
 ) -> Result<()> {
-    let mut terminal = ratatui::init();
+    let mut terminal = init_terminal()?;
 
     // Set image viewer env var for cells to use.
     if let Some(viewer) = app_config.general.image_viewer.as_ref() {
@@ -41,7 +51,7 @@ pub async fn run(
 
     let mut app = App::new(visible_cells(lib), app_config.general.show_timings);
     app.refresh_context(store::list());
-    run_cell_with_capture(lib, &mut app, 0).await;
+    let mut cell_task: Option<JoinHandle<()>> = spawn_cell(lib, &mut app, 0, &event_tx);
 
     let mut events = EventHandler::new(event_rx, Duration::from_millis(100));
 
@@ -56,7 +66,7 @@ pub async fn run(
                         Action::Quit => break,
                         Action::RunCell(idx) => {
                             if !app.executing {
-                                run_cell_with_capture(lib, &mut app, idx).await;
+                                cell_task = spawn_cell(lib, &mut app, idx, &event_tx);
                             }
                         }
                         Action::ViewOutput => {
@@ -65,7 +75,7 @@ pub async fn run(
                             {
                                 events.stop();
                                 view_output_in_pager(&output.stdout);
-                                terminal = ratatui::init();
+                                terminal = init_terminal()?;
                                 events.resume();
                             }
                         }
@@ -75,7 +85,7 @@ pub async fn run(
                             {
                                 events.stop();
                                 view_output_in_pager(error);
-                                terminal = ratatui::init();
+                                terminal = init_terminal()?;
                                 events.resume();
                             }
                         }
@@ -83,7 +93,7 @@ pub async fn run(
                             if let BuildStatus::BuildError(error) = &app.build_status {
                                 events.stop();
                                 view_output_in_pager(error);
-                                terminal = ratatui::init();
+                                terminal = init_terminal()?;
                                 events.resume();
                             }
                         }
@@ -92,7 +102,8 @@ pub async fn run(
                             app.refresh_context(store::list());
                         }
                         Action::Reload => {
-                            trigger_reload(&mut app, lib).await;
+                            cell_task =
+                                trigger_reload(&mut app, lib, &event_tx, cell_task.take()).await;
                         }
                         Action::Edit => {
                             let line = app.selected_cell_index().and_then(|i| {
@@ -104,7 +115,7 @@ pub async fn run(
                             });
                             events.stop();
                             edit_cellbook(line);
-                            terminal = ratatui::init();
+                            terminal = init_terminal()?;
                             events.resume();
                         }
                         Action::None => {}
@@ -128,17 +139,47 @@ pub async fn run(
                 }
 
                 AppEvent::Tui(TuiEvent::Reloaded) => {
+                    // Abort any running cell task before reloading the library.
+                    // The spawned future holds code from the current dylib, so it
+                    // must be dropped before the library is unmapped.
+                    if let Some(handle) = cell_task.take() {
+                        handle.abort();
+                        let _ = handle.await;
+                    }
+                    app.executing = false;
                     app.build_status = BuildStatus::Reloading;
                     match lib.reload() {
                         Ok(()) => {
                             app.refresh_cells(visible_cells(lib));
-                            run_cell_with_capture(lib, &mut app, 0).await;
+                            cell_task = spawn_cell(lib, &mut app, 0, &event_tx);
                             app.build_status = BuildStatus::Idle;
                         }
                         Err(e) => {
                             app.build_status = BuildStatus::BuildError(e.to_string());
                         }
                     }
+                }
+
+                AppEvent::Tui(TuiEvent::CellCompleted {
+                    idx,
+                    name,
+                    stdout,
+                    duration,
+                    result,
+                }) => {
+                    app.increment_count(&name);
+                    match result {
+                        Ok(()) => {
+                            app.cell_statuses[idx] = CellStatus::Success;
+                        }
+                        Err(e) => {
+                            app.cell_statuses[idx] = CellStatus::Error(e);
+                        }
+                    }
+                    app.store_output(&name, CellOutput { stdout, duration });
+                    app.refresh_context(store::list());
+                    app.executing = false;
+                    cell_task = None;
                 }
 
                 AppEvent::Tick => {}
@@ -148,81 +189,117 @@ pub async fn run(
         }
     }
 
-    ratatui::restore();
+    // Abort any running cell task before exiting.
+    if let Some(handle) = cell_task.take() {
+        handle.abort();
+        let _ = handle.await;
+    }
+
+    restore_terminal();
 
     Ok(())
 }
 
+fn init_terminal() -> Result<AppTerminal> {
+    enable_raw_mode()?;
+    execute!(std::io::stderr(), EnterAlternateScreen)?;
+    let backend = CrosstermBackend::new(std::io::stderr());
+    Ok(Terminal::new(backend)?)
+}
+
+fn restore_terminal() {
+    let _ = disable_raw_mode();
+    let _ = execute!(std::io::stderr(), LeaveAlternateScreen);
+}
+
 /// Trigger a manual rebuild and reload.
-async fn trigger_reload(app: &mut App, lib: &mut LoadedLibrary) {
+/// Aborts any running cell task before reloading the library to prevent UB.
+async fn trigger_reload(
+    app: &mut App,
+    lib: &mut LoadedLibrary,
+    event_tx: &mpsc::Sender<TuiEvent>,
+    cell_task: Option<JoinHandle<()>>,
+) -> Option<JoinHandle<()>> {
     app.build_status = BuildStatus::Building;
 
     match watcher::rebuild().await {
         Ok(()) => {
+            if let Some(handle) = cell_task {
+                handle.abort();
+                let _ = handle.await;
+            }
+            app.executing = false;
             app.build_status = BuildStatus::Reloading;
             match lib.reload() {
                 Ok(()) => {
                     app.refresh_cells(visible_cells(lib));
-                    run_cell_with_capture(lib, app, 0).await;
+                    let handle = spawn_cell(lib, app, 0, event_tx);
                     app.build_status = BuildStatus::Idle;
+                    handle
                 }
                 Err(e) => {
                     app.build_status = BuildStatus::BuildError(e.to_string());
+                    None
                 }
             }
         }
         Err(e) => {
             app.build_status = BuildStatus::BuildError(e.to_string());
+            cell_task
         }
     }
 }
 
-/// Run a cell and capture its stdout.
-async fn run_cell_with_capture(lib: &LoadedLibrary, app: &mut App, idx: usize) {
+/// Spawn a cell as a background task, sending the result via `event_tx`.
+/// Returns the `JoinHandle` so it can be aborted before a library reload.
+fn spawn_cell(
+    lib: &LoadedLibrary,
+    app: &mut App,
+    idx: usize,
+    event_tx: &mpsc::Sender<TuiEvent>,
+) -> Option<JoinHandle<()>> {
     if idx >= app.cells.len() {
-        return;
+        return None;
     }
 
     let cell_name = app.cells[idx].clone();
     app.executing = true;
     app.cell_statuses[idx] = CellStatus::Running;
 
-    let start = Instant::now();
-
-    // Capture stdout during cell execution.
-    let (captured, result) = capture_stdout(|| async {
-        if idx == 0 {
-            lib.run_init().await
-        } else {
-            lib.run_cell(&cell_name).await
+    let future = if idx == 0 {
+        lib.init_future()
+    } else {
+        match lib.cell_future(&cell_name) {
+            Ok(f) => f,
+            Err(e) => {
+                app.cell_statuses[idx] = CellStatus::Error(e.to_string());
+                app.executing = false;
+                return None;
+            }
         }
-    })
-    .await;
+    };
 
-    let elapsed = start.elapsed();
+    let tx = event_tx.clone();
+    let name = cell_name.clone();
+    let handle = tokio::spawn(async move {
+        let start = Instant::now();
+        let (stdout, result) = capture_stdout(|| async {
+            future.await.map_err(|e| e.to_string())
+        })
+        .await;
+        let duration = start.elapsed();
 
-    app.increment_count(&cell_name);
-
-    match result {
-        Ok(()) => {
-            app.cell_statuses[idx] = CellStatus::Success;
-        }
-        Err(e) => {
-            app.cell_statuses[idx] = CellStatus::Error(e.to_string());
-        }
-    }
-
-    // Store the captured output.
-    app.store_output(
-        &cell_name,
-        CellOutput {
-            stdout: captured,
-            duration: elapsed,
-        },
-    );
-
-    app.refresh_context(store::list());
-    app.executing = false;
+        let _ = tx
+            .send(TuiEvent::CellCompleted {
+                idx,
+                name,
+                stdout,
+                duration,
+                result,
+            })
+            .await;
+    });
+    Some(handle)
 }
 
 fn visible_cells(lib: &LoadedLibrary) -> Vec<String> {
@@ -254,7 +331,7 @@ where
 
 /// View output in an external pager.
 fn view_output_in_pager(output: &str) {
-    ratatui::restore();
+    restore_terminal();
 
     // Clear screen to minimize flash of terminal history.
     let _ = std::io::stdout()
@@ -286,7 +363,7 @@ fn view_output_in_pager(output: &str) {
 /// Open cellbook.rs in the user's editor.
 /// If a line number is provided, attempts to open at that line.
 fn edit_cellbook(line: Option<u32>) {
-    ratatui::restore();
+    restore_terminal();
 
     // Clear screen to minimize flash of terminal history.
     let _ = std::io::stdout()

@@ -1,6 +1,5 @@
 mod errors;
 mod loader;
-mod runner;
 mod store;
 mod tui;
 mod watcher;
@@ -79,10 +78,11 @@ async fn run_project() -> Result<()> {
     let (event_tx, event_rx) = mpsc::channel(32);
 
     // Start file watcher.
+    let tui_event_tx = event_tx.clone();
     let watcher_handle = watcher::start_watcher(event_tx, &app_config.general).await?;
 
     // Run the TUI
-    tui::run(&mut lib, event_rx, app_config).await?;
+    tui::run(&mut lib, tui_event_tx, event_rx, app_config).await?;
 
     // Stop the watcher when TUI exits
     if let Some(handle) = watcher_handle {
@@ -92,7 +92,31 @@ async fn run_project() -> Result<()> {
     Ok(())
 }
 
+fn is_valid_package_name(name: &str) -> bool {
+    if name.is_empty() {
+        return false;
+    }
+    let mut chars = name.chars();
+    let first = chars.next().unwrap();
+    if !first.is_ascii_alphabetic() && first != '_' {
+        return false;
+    }
+    chars.all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+}
+
 fn init_project(name: &str) -> Result<()> {
+    if !is_valid_package_name(name) {
+        return Err(errors::Error::Io(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            format!(
+                "Invalid project name '{}'. \
+                 Must start with a letter or underscore and contain only \
+                 alphanumeric characters, hyphens, or underscores.",
+                name
+            ),
+        )));
+    }
+
     let project_path = Path::new(name);
 
     if project_path.exists() {

@@ -1,5 +1,7 @@
 //! TUI application state.
 
+#![allow(unused)]
+
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -22,7 +24,6 @@ pub enum BuildStatus {
     Idle,
     Building,
     Reloading,
-    #[allow(dead_code)]
     BuildError(String),
 }
 
@@ -30,7 +31,6 @@ pub enum BuildStatus {
 #[derive(Clone, Debug, Default)]
 pub struct CellOutput {
     pub stdout: String,
-    #[allow(dead_code)]
     pub duration: Duration,
 }
 
@@ -60,8 +60,6 @@ pub struct App {
     /// Whether a cell is currently executing.
     pub executing: bool,
 
-    /// Show timing information.
-    #[allow(dead_code)]
     pub show_timings: bool,
 }
 

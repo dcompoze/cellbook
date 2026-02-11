@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use ratatui::crossterm::event::KeyCode;
+use ratatui::crossterm::event::{KeyCode, KeyModifiers};
 use serde::{Deserialize, Serialize};
 
 /// App configuration.
@@ -96,6 +96,9 @@ impl Default for Keybindings {
 }
 
 /// A keybinding that can be a single key or multiple alternatives.
+///
+/// Supports modifier prefixes: `Ctrl+`, `Alt+`, `Shift+`.
+/// Uppercase single characters implicitly require Shift.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum KeyBinding {
@@ -104,48 +107,74 @@ pub enum KeyBinding {
 }
 
 impl KeyBinding {
-    /// Check if the given key code matches this binding.
-    pub fn matches(&self, code: KeyCode) -> bool {
+    /// Check if the given key code and modifiers match this binding.
+    pub fn matches(&self, code: KeyCode, modifiers: KeyModifiers) -> bool {
         match self {
-            KeyBinding::Single(s) => parse_key(s).is_some_and(|k| k == code),
-            KeyBinding::Multiple(keys) => keys.iter().any(|s| parse_key(s).is_some_and(|k| k == code)),
+            KeyBinding::Single(s) => key_matches(s, code, modifiers),
+            KeyBinding::Multiple(keys) => keys.iter().any(|s| key_matches(s, code, modifiers)),
         }
     }
 }
 
-/// Parse a key string into a KeyCode.
-fn parse_key(s: &str) -> Option<KeyCode> {
-    match s {
-        "Enter" => Some(KeyCode::Enter),
-        "Esc" | "Escape" => Some(KeyCode::Esc),
-        "Tab" => Some(KeyCode::Tab),
-        "Backspace" => Some(KeyCode::Backspace),
-        "Delete" => Some(KeyCode::Delete),
-        "Insert" => Some(KeyCode::Insert),
-        "Home" => Some(KeyCode::Home),
-        "End" => Some(KeyCode::End),
-        "PageUp" => Some(KeyCode::PageUp),
-        "PageDown" => Some(KeyCode::PageDown),
-        "Up" => Some(KeyCode::Up),
-        "Down" => Some(KeyCode::Down),
-        "Left" => Some(KeyCode::Left),
-        "Right" => Some(KeyCode::Right),
-        "Space" => Some(KeyCode::Char(' ')),
-        "F1" => Some(KeyCode::F(1)),
-        "F2" => Some(KeyCode::F(2)),
-        "F3" => Some(KeyCode::F(3)),
-        "F4" => Some(KeyCode::F(4)),
-        "F5" => Some(KeyCode::F(5)),
-        "F6" => Some(KeyCode::F(6)),
-        "F7" => Some(KeyCode::F(7)),
-        "F8" => Some(KeyCode::F(8)),
-        "F9" => Some(KeyCode::F(9)),
-        "F10" => Some(KeyCode::F(10)),
-        "F11" => Some(KeyCode::F(11)),
-        "F12" => Some(KeyCode::F(12)),
-        s if s.len() == 1 => s.chars().next().map(KeyCode::Char),
-        _ => None,
-    }
+fn key_matches(binding: &str, code: KeyCode, modifiers: KeyModifiers) -> bool {
+    parse_key(binding).is_some_and(|(k, m)| k == code && m == modifiers)
+}
+
+/// Parse a key string into a `KeyCode` and `KeyModifiers`.
+///
+/// Supports modifier prefixes (`Ctrl+`, `Alt+`, `Shift+`) and
+/// implicit Shift for uppercase ASCII characters.
+fn parse_key(s: &str) -> Option<(KeyCode, KeyModifiers)> {
+    let (modifiers, key_part) = if let Some(rest) = s.strip_prefix("Ctrl+") {
+        (KeyModifiers::CONTROL, rest)
+    } else if let Some(rest) = s.strip_prefix("Alt+") {
+        (KeyModifiers::ALT, rest)
+    } else if let Some(rest) = s.strip_prefix("Shift+") {
+        (KeyModifiers::SHIFT, rest)
+    } else {
+        (KeyModifiers::NONE, s)
+    };
+
+    let code = match key_part {
+        "Enter" => KeyCode::Enter,
+        "Esc" | "Escape" => KeyCode::Esc,
+        "Tab" => KeyCode::Tab,
+        "Backspace" => KeyCode::Backspace,
+        "Delete" => KeyCode::Delete,
+        "Insert" => KeyCode::Insert,
+        "Home" => KeyCode::Home,
+        "End" => KeyCode::End,
+        "PageUp" => KeyCode::PageUp,
+        "PageDown" => KeyCode::PageDown,
+        "Up" => KeyCode::Up,
+        "Down" => KeyCode::Down,
+        "Left" => KeyCode::Left,
+        "Right" => KeyCode::Right,
+        "Space" => KeyCode::Char(' '),
+        "F1" => KeyCode::F(1),
+        "F2" => KeyCode::F(2),
+        "F3" => KeyCode::F(3),
+        "F4" => KeyCode::F(4),
+        "F5" => KeyCode::F(5),
+        "F6" => KeyCode::F(6),
+        "F7" => KeyCode::F(7),
+        "F8" => KeyCode::F(8),
+        "F9" => KeyCode::F(9),
+        "F10" => KeyCode::F(10),
+        "F11" => KeyCode::F(11),
+        "F12" => KeyCode::F(12),
+        s if s.len() == 1 => {
+            let c = s.chars().next()?;
+            // Uppercase ASCII implies Shift when no explicit modifier is set.
+            if c.is_ascii_uppercase() && modifiers == KeyModifiers::NONE {
+                return Some((KeyCode::Char(c), KeyModifiers::SHIFT));
+            }
+            KeyCode::Char(c)
+        }
+        _ => return None,
+    };
+
+    Some((code, modifiers))
 }
 
 /// Get the path to the config file.
@@ -259,24 +288,82 @@ mod tests {
 
     #[test]
     fn test_parse_key_single_char() {
-        assert_eq!(parse_key("q"), Some(KeyCode::Char('q')));
-        assert_eq!(parse_key("j"), Some(KeyCode::Char('j')));
-        assert_eq!(parse_key("1"), Some(KeyCode::Char('1')));
+        assert_eq!(
+            parse_key("q"),
+            Some((KeyCode::Char('q'), KeyModifiers::NONE))
+        );
+        assert_eq!(
+            parse_key("j"),
+            Some((KeyCode::Char('j'), KeyModifiers::NONE))
+        );
+        assert_eq!(
+            parse_key("1"),
+            Some((KeyCode::Char('1'), KeyModifiers::NONE))
+        );
+    }
+
+    #[test]
+    fn test_parse_key_uppercase_implies_shift() {
+        assert_eq!(
+            parse_key("E"),
+            Some((KeyCode::Char('E'), KeyModifiers::SHIFT))
+        );
+        assert_eq!(
+            parse_key("Q"),
+            Some((KeyCode::Char('Q'), KeyModifiers::SHIFT))
+        );
+    }
+
+    #[test]
+    fn test_parse_key_explicit_modifiers() {
+        assert_eq!(
+            parse_key("Ctrl+q"),
+            Some((KeyCode::Char('q'), KeyModifiers::CONTROL))
+        );
+        assert_eq!(
+            parse_key("Alt+x"),
+            Some((KeyCode::Char('x'), KeyModifiers::ALT))
+        );
+        assert_eq!(
+            parse_key("Shift+Enter"),
+            Some((KeyCode::Enter, KeyModifiers::SHIFT))
+        );
     }
 
     #[test]
     fn test_parse_key_special() {
-        assert_eq!(parse_key("Enter"), Some(KeyCode::Enter));
-        assert_eq!(parse_key("Esc"), Some(KeyCode::Esc));
-        assert_eq!(parse_key("Space"), Some(KeyCode::Char(' ')));
-        assert_eq!(parse_key("Up"), Some(KeyCode::Up));
-        assert_eq!(parse_key("Down"), Some(KeyCode::Down));
+        assert_eq!(
+            parse_key("Enter"),
+            Some((KeyCode::Enter, KeyModifiers::NONE))
+        );
+        assert_eq!(
+            parse_key("Esc"),
+            Some((KeyCode::Esc, KeyModifiers::NONE))
+        );
+        assert_eq!(
+            parse_key("Space"),
+            Some((KeyCode::Char(' '), KeyModifiers::NONE))
+        );
+        assert_eq!(
+            parse_key("Up"),
+            Some((KeyCode::Up, KeyModifiers::NONE))
+        );
+        assert_eq!(
+            parse_key("Down"),
+            Some((KeyCode::Down, KeyModifiers::NONE))
+        );
     }
 
     #[test]
     fn test_parse_key_function() {
-        assert_eq!(parse_key("F1"), Some(KeyCode::F(1)));
-        assert_eq!(parse_key("F12"), Some(KeyCode::F(12)));
+        assert_eq!(
+            parse_key("F1"),
+            Some((KeyCode::F(1), KeyModifiers::NONE))
+        );
+        assert_eq!(
+            parse_key("F12"),
+            Some((KeyCode::F(12), KeyModifiers::NONE))
+        );
     }
 
     #[test]
@@ -288,16 +375,25 @@ mod tests {
     #[test]
     fn test_keybinding_matches_single() {
         let binding = KeyBinding::Single("q".into());
-        assert!(binding.matches(KeyCode::Char('q')));
-        assert!(!binding.matches(KeyCode::Char('x')));
+        assert!(binding.matches(KeyCode::Char('q'), KeyModifiers::NONE));
+        assert!(!binding.matches(KeyCode::Char('q'), KeyModifiers::CONTROL));
+        assert!(!binding.matches(KeyCode::Char('x'), KeyModifiers::NONE));
+    }
+
+    #[test]
+    fn test_keybinding_matches_shift() {
+        let binding = KeyBinding::Single("E".into());
+        assert!(binding.matches(KeyCode::Char('E'), KeyModifiers::SHIFT));
+        assert!(!binding.matches(KeyCode::Char('E'), KeyModifiers::NONE));
+        assert!(!binding.matches(KeyCode::Char('e'), KeyModifiers::NONE));
     }
 
     #[test]
     fn test_keybinding_matches_multiple() {
         let binding = KeyBinding::Multiple(vec!["Down".into(), "j".into()]);
-        assert!(binding.matches(KeyCode::Down));
-        assert!(binding.matches(KeyCode::Char('j')));
-        assert!(!binding.matches(KeyCode::Up));
+        assert!(binding.matches(KeyCode::Down, KeyModifiers::NONE));
+        assert!(binding.matches(KeyCode::Char('j'), KeyModifiers::NONE));
+        assert!(!binding.matches(KeyCode::Up, KeyModifiers::NONE));
     }
 
     #[test]
@@ -312,10 +408,22 @@ navigate_down = ["Down", "n"]
 "#;
         let config: AppConfig = toml::from_str(toml).unwrap();
         assert!(config.general.show_timings);
-        assert!(config.keybindings.quit.matches(KeyCode::Char('q')));
-        assert!(config.keybindings.view_build_error.matches(KeyCode::Char('f')));
-        assert!(config.keybindings.navigate_down.matches(KeyCode::Down));
-        assert!(config.keybindings.navigate_down.matches(KeyCode::Char('n')));
+        assert!(config
+            .keybindings
+            .quit
+            .matches(KeyCode::Char('q'), KeyModifiers::NONE));
+        assert!(config
+            .keybindings
+            .view_build_error
+            .matches(KeyCode::Char('f'), KeyModifiers::NONE));
+        assert!(config
+            .keybindings
+            .navigate_down
+            .matches(KeyCode::Down, KeyModifiers::NONE));
+        assert!(config
+            .keybindings
+            .navigate_down
+            .matches(KeyCode::Char('n'), KeyModifiers::NONE));
     }
 
     #[test]
@@ -397,7 +505,13 @@ quit = "Q"
             .unwrap(),
         );
 
-        assert!(config.keybindings.quit.matches(KeyCode::Char('Q')));
-        assert!(config.keybindings.reload.matches(KeyCode::Char('r')));
+        assert!(config
+            .keybindings
+            .quit
+            .matches(KeyCode::Char('Q'), KeyModifiers::SHIFT));
+        assert!(config
+            .keybindings
+            .reload
+            .matches(KeyCode::Char('r'), KeyModifiers::NONE));
     }
 }
