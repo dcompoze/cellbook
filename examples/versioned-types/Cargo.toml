@@ -1,0 +1,13 @@
+[package]
+edition = "2024"
+name = "versioned-types"
+version = "0.1.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+path = "cellbook.rs"
+
+[dependencies]
+anyhow = "1"
+cellbook = { path = "../../cellbook" }
+serde = { version = "1", features = ["derive"] }

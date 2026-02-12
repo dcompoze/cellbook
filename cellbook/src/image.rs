@@ -23,11 +23,7 @@ pub fn open_image_bytes(data: &[u8], extension: &str) -> Result<()> {
         .unwrap_or(0)
         ^ (std::process::id() as u64);
 
-    let temp_path = std::env::temp_dir().join(format!(
-        "cellbook_{:x}.{}",
-        rand_id,
-        extension
-    ));
+    let temp_path = std::env::temp_dir().join(format!("cellbook_{:x}.{}", rand_id, extension));
 
     let mut file = std::fs::File::create(&temp_path)?;
     file.write_all(data)?;

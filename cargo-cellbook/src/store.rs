@@ -12,8 +12,7 @@ struct StoredValue {
     type_name: String,
 }
 
-static STORE: LazyLock<Mutex<HashMap<String, StoredValue>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
+static STORE: LazyLock<Mutex<HashMap<String, StoredValue>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
 
 pub fn store_value(key: &str, bytes: Vec<u8>, type_name: &str) {
     let mut store = STORE.lock();

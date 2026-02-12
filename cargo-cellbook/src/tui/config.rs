@@ -288,30 +288,15 @@ mod tests {
 
     #[test]
     fn test_parse_key_single_char() {
-        assert_eq!(
-            parse_key("q"),
-            Some((KeyCode::Char('q'), KeyModifiers::NONE))
-        );
-        assert_eq!(
-            parse_key("j"),
-            Some((KeyCode::Char('j'), KeyModifiers::NONE))
-        );
-        assert_eq!(
-            parse_key("1"),
-            Some((KeyCode::Char('1'), KeyModifiers::NONE))
-        );
+        assert_eq!(parse_key("q"), Some((KeyCode::Char('q'), KeyModifiers::NONE)));
+        assert_eq!(parse_key("j"), Some((KeyCode::Char('j'), KeyModifiers::NONE)));
+        assert_eq!(parse_key("1"), Some((KeyCode::Char('1'), KeyModifiers::NONE)));
     }
 
     #[test]
     fn test_parse_key_uppercase_implies_shift() {
-        assert_eq!(
-            parse_key("E"),
-            Some((KeyCode::Char('E'), KeyModifiers::SHIFT))
-        );
-        assert_eq!(
-            parse_key("Q"),
-            Some((KeyCode::Char('Q'), KeyModifiers::SHIFT))
-        );
+        assert_eq!(parse_key("E"), Some((KeyCode::Char('E'), KeyModifiers::SHIFT)));
+        assert_eq!(parse_key("Q"), Some((KeyCode::Char('Q'), KeyModifiers::SHIFT)));
     }
 
     #[test]
@@ -320,10 +305,7 @@ mod tests {
             parse_key("Ctrl+q"),
             Some((KeyCode::Char('q'), KeyModifiers::CONTROL))
         );
-        assert_eq!(
-            parse_key("Alt+x"),
-            Some((KeyCode::Char('x'), KeyModifiers::ALT))
-        );
+        assert_eq!(parse_key("Alt+x"), Some((KeyCode::Char('x'), KeyModifiers::ALT)));
         assert_eq!(
             parse_key("Shift+Enter"),
             Some((KeyCode::Enter, KeyModifiers::SHIFT))
@@ -332,38 +314,17 @@ mod tests {
 
     #[test]
     fn test_parse_key_special() {
-        assert_eq!(
-            parse_key("Enter"),
-            Some((KeyCode::Enter, KeyModifiers::NONE))
-        );
-        assert_eq!(
-            parse_key("Esc"),
-            Some((KeyCode::Esc, KeyModifiers::NONE))
-        );
-        assert_eq!(
-            parse_key("Space"),
-            Some((KeyCode::Char(' '), KeyModifiers::NONE))
-        );
-        assert_eq!(
-            parse_key("Up"),
-            Some((KeyCode::Up, KeyModifiers::NONE))
-        );
-        assert_eq!(
-            parse_key("Down"),
-            Some((KeyCode::Down, KeyModifiers::NONE))
-        );
+        assert_eq!(parse_key("Enter"), Some((KeyCode::Enter, KeyModifiers::NONE)));
+        assert_eq!(parse_key("Esc"), Some((KeyCode::Esc, KeyModifiers::NONE)));
+        assert_eq!(parse_key("Space"), Some((KeyCode::Char(' '), KeyModifiers::NONE)));
+        assert_eq!(parse_key("Up"), Some((KeyCode::Up, KeyModifiers::NONE)));
+        assert_eq!(parse_key("Down"), Some((KeyCode::Down, KeyModifiers::NONE)));
     }
 
     #[test]
     fn test_parse_key_function() {
-        assert_eq!(
-            parse_key("F1"),
-            Some((KeyCode::F(1), KeyModifiers::NONE))
-        );
-        assert_eq!(
-            parse_key("F12"),
-            Some((KeyCode::F(12), KeyModifiers::NONE))
-        );
+        assert_eq!(parse_key("F1"), Some((KeyCode::F(1), KeyModifiers::NONE)));
+        assert_eq!(parse_key("F12"), Some((KeyCode::F(12), KeyModifiers::NONE)));
     }
 
     #[test]
@@ -408,22 +369,30 @@ navigate_down = ["Down", "n"]
 "#;
         let config: AppConfig = toml::from_str(toml).unwrap();
         assert!(config.general.show_timings);
-        assert!(config
-            .keybindings
-            .quit
-            .matches(KeyCode::Char('q'), KeyModifiers::NONE));
-        assert!(config
-            .keybindings
-            .view_build_error
-            .matches(KeyCode::Char('f'), KeyModifiers::NONE));
-        assert!(config
-            .keybindings
-            .navigate_down
-            .matches(KeyCode::Down, KeyModifiers::NONE));
-        assert!(config
-            .keybindings
-            .navigate_down
-            .matches(KeyCode::Char('n'), KeyModifiers::NONE));
+        assert!(
+            config
+                .keybindings
+                .quit
+                .matches(KeyCode::Char('q'), KeyModifiers::NONE)
+        );
+        assert!(
+            config
+                .keybindings
+                .view_build_error
+                .matches(KeyCode::Char('f'), KeyModifiers::NONE)
+        );
+        assert!(
+            config
+                .keybindings
+                .navigate_down
+                .matches(KeyCode::Down, KeyModifiers::NONE)
+        );
+        assert!(
+            config
+                .keybindings
+                .navigate_down
+                .matches(KeyCode::Char('n'), KeyModifiers::NONE)
+        );
     }
 
     #[test]
@@ -505,13 +474,17 @@ quit = "Q"
             .unwrap(),
         );
 
-        assert!(config
-            .keybindings
-            .quit
-            .matches(KeyCode::Char('Q'), KeyModifiers::SHIFT));
-        assert!(config
-            .keybindings
-            .reload
-            .matches(KeyCode::Char('r'), KeyModifiers::NONE));
+        assert!(
+            config
+                .keybindings
+                .quit
+                .matches(KeyCode::Char('Q'), KeyModifiers::SHIFT)
+        );
+        assert!(
+            config
+                .keybindings
+                .reload
+                .matches(KeyCode::Char('r'), KeyModifiers::NONE)
+        );
     }
 }

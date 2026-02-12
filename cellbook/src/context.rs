@@ -4,8 +4,10 @@
 
 use std::any::type_name;
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 
+use crate::StoreSchema;
 use crate::errors::{ContextError, Result};
 
 pub type StoreFn = fn(&str, Vec<u8>, &str);
@@ -45,10 +47,26 @@ impl CellContext {
         Ok(())
     }
 
+    /// Store a versioned value with the given key.
+    pub fn store_versioned<T: Serialize + StoreSchema>(&self, key: &str, value: &T) -> Result<()> {
+        self.store_versioned_with(key, value, T::VERSION)
+    }
+
+    /// Store a value with an explicit schema version.
+    pub fn store_versioned_with<T: Serialize>(&self, key: &str, value: &T, version: u32) -> Result<()> {
+        let bytes = postcard::to_stdvec(value).map_err(|e| ContextError::Serialization {
+            key: key.to_string(),
+            message: e.to_string(),
+        })?;
+        let tagged_type_name = format!("{}#v{}", type_name::<T>(), version);
+        (self.store_fn)(key, bytes, &tagged_type_name);
+        Ok(())
+    }
+
     /// Load a value by key.
     pub fn load<T: DeserializeOwned>(&self, key: &str) -> Result<T> {
-        let (bytes, stored_type_name) = (self.load_fn)(key)
-            .ok_or_else(|| ContextError::NotFound(key.to_string()))?;
+        let (bytes, stored_type_name) =
+            (self.load_fn)(key).ok_or_else(|| ContextError::NotFound(key.to_string()))?;
         let requested_type_name = type_name::<T>();
         if stored_type_name != requested_type_name {
             return Err(ContextError::TypeMismatch {
@@ -76,8 +94,8 @@ impl CellContext {
 
     /// Load and remove a value in one operation.
     pub fn consume<T: DeserializeOwned>(&self, key: &str) -> Result<T> {
-        let (bytes, stored_type_name) = (self.load_fn)(key)
-            .ok_or_else(|| ContextError::NotFound(key.to_string()))?;
+        let (bytes, stored_type_name) =
+            (self.load_fn)(key).ok_or_else(|| ContextError::NotFound(key.to_string()))?;
         let requested_type_name = type_name::<T>();
         if stored_type_name != requested_type_name {
             return Err(ContextError::TypeMismatch {
@@ -88,13 +106,50 @@ impl CellContext {
             .into());
         }
 
-        let value = postcard::from_bytes(&bytes).map_err(|e| {
+        let value = postcard::from_bytes(&bytes).map_err(|e| ContextError::Deserialization {
+            key: key.to_string(),
+            message: e.to_string(),
+        })?;
+
+        let _ = (self.remove_fn)(key);
+        Ok(value)
+    }
+
+    /// Load a versioned value by key.
+    pub fn load_versioned<T: DeserializeOwned + StoreSchema>(&self, key: &str) -> Result<T> {
+        self.load_versioned_with(key, T::VERSION)
+    }
+
+    /// Load a value by key with an explicit expected schema version.
+    pub fn load_versioned_with<T: DeserializeOwned>(&self, key: &str, version: u32) -> Result<T> {
+        let (bytes, stored_type_name) =
+            (self.load_fn)(key).ok_or_else(|| ContextError::NotFound(key.to_string()))?;
+        Self::validate_versioned_type(key, &stored_type_name, type_name::<T>(), version)?;
+
+        postcard::from_bytes(&bytes).map_err(|e| {
             ContextError::Deserialization {
                 key: key.to_string(),
                 message: e.to_string(),
             }
-        })?;
+            .into()
+        })
+    }
 
+    /// Load and remove a versioned value in one operation.
+    pub fn consume_versioned<T: DeserializeOwned + StoreSchema>(&self, key: &str) -> Result<T> {
+        self.consume_versioned_with(key, T::VERSION)
+    }
+
+    /// Load and remove a value with an explicit expected schema version.
+    pub fn consume_versioned_with<T: DeserializeOwned>(&self, key: &str, version: u32) -> Result<T> {
+        let (bytes, stored_type_name) =
+            (self.load_fn)(key).ok_or_else(|| ContextError::NotFound(key.to_string()))?;
+        Self::validate_versioned_type(key, &stored_type_name, type_name::<T>(), version)?;
+
+        let value = postcard::from_bytes(&bytes).map_err(|e| ContextError::Deserialization {
+            key: key.to_string(),
+            message: e.to_string(),
+        })?;
         let _ = (self.remove_fn)(key);
         Ok(value)
     }
@@ -102,6 +157,57 @@ impl CellContext {
     /// List all keys and their type names.
     pub fn list(&self) -> Vec<(String, String)> {
         (self.list_fn)()
+    }
+
+    fn validate_versioned_type(
+        key: &str,
+        stored_type_name: &str,
+        expected_type_name: &str,
+        expected_version: u32,
+    ) -> Result<()> {
+        match Self::split_versioned_type_name(stored_type_name) {
+            Some((stored_type_name_only, stored_version)) => {
+                if stored_type_name_only != expected_type_name {
+                    return Err(ContextError::TypeMismatch {
+                        key: key.to_string(),
+                        expected: expected_type_name.to_string(),
+                        found: stored_type_name_only.to_string(),
+                    }
+                    .into());
+                }
+                if stored_version != expected_version {
+                    return Err(ContextError::SchemaVersionMismatch {
+                        key: key.to_string(),
+                        expected: expected_version,
+                        found: stored_version,
+                    }
+                    .into());
+                }
+                Ok(())
+            }
+            None => {
+                if stored_type_name == expected_type_name {
+                    return Err(ContextError::SchemaVersionMismatch {
+                        key: key.to_string(),
+                        expected: expected_version,
+                        found: 0,
+                    }
+                    .into());
+                }
+                Err(ContextError::TypeMismatch {
+                    key: key.to_string(),
+                    expected: expected_type_name.to_string(),
+                    found: stored_type_name.to_string(),
+                }
+                .into())
+            }
+        }
+    }
+
+    fn split_versioned_type_name(type_name_with_version: &str) -> Option<(&str, u32)> {
+        let (type_name, version_part) = type_name_with_version.rsplit_once("#v")?;
+        let version = version_part.parse().ok()?;
+        Some((type_name, version))
     }
 }
 
@@ -115,6 +221,7 @@ mod tests {
     use std::sync::LazyLock;
 
     use parking_lot::Mutex;
+    use serde::{Deserialize, Serialize};
 
     use super::*;
     use crate::Error;
@@ -153,12 +260,7 @@ mod tests {
         ctx.store("data", &value).expect("store should succeed");
 
         let err = ctx.load::<Vec<u16>>("data").expect_err("load should fail");
-        let Error::Context(ContextError::TypeMismatch {
-            key,
-            expected,
-            found,
-        }) = err
-        else {
+        let Error::Context(ContextError::TypeMismatch { key, expected, found }) = err else {
             panic!("expected type mismatch error");
         };
 
@@ -173,15 +275,8 @@ mod tests {
         let value = vec![1u8, 2, 3];
         ctx.store("data", &value).expect("store should succeed");
 
-        let err = ctx
-            .consume::<Vec<u16>>("data")
-            .expect_err("consume should fail");
-        let Error::Context(ContextError::TypeMismatch {
-            key,
-            expected,
-            found,
-        }) = err
-        else {
+        let err = ctx.consume::<Vec<u16>>("data").expect_err("consume should fail");
+        let Error::Context(ContextError::TypeMismatch { key, expected, found }) = err else {
             panic!("expected type mismatch error");
         };
 
@@ -193,5 +288,104 @@ mod tests {
             .load::<Vec<u8>>("data")
             .expect("value should still be present after failed consume");
         assert_eq!(still_present, value);
+    }
+
+    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    struct VersionedData {
+        value: u32,
+    }
+
+    impl crate::StoreSchema for VersionedData {
+        const VERSION: u32 = 1;
+    }
+
+    #[test]
+    fn load_versioned_round_trip() {
+        let ctx = CellContext::new(store, load, remove, list);
+        let value = VersionedData { value: 42 };
+        ctx.store_versioned("versioned_data", &value)
+            .expect("store_versioned should succeed");
+
+        let loaded: VersionedData = ctx
+            .load_versioned("versioned_data")
+            .expect("load_versioned should succeed");
+        assert_eq!(loaded, value);
+    }
+
+    #[test]
+    fn load_versioned_rejects_schema_mismatch() {
+        let ctx = CellContext::new(store, load, remove, list);
+        let value = VersionedData { value: 7 };
+        let bytes = postcard::to_stdvec(&value).expect("serialization should succeed");
+        let tagged_type_name = format!("{}#v99", std::any::type_name::<VersionedData>());
+        store("versioned_data", bytes, &tagged_type_name);
+
+        let err = ctx
+            .load_versioned::<VersionedData>("versioned_data")
+            .expect_err("load_versioned should fail");
+        let Error::Context(ContextError::SchemaVersionMismatch { key, expected, found }) = err else {
+            panic!("expected schema version mismatch error");
+        };
+
+        assert_eq!(key, "versioned_data");
+        assert_eq!(expected, 1);
+        assert_eq!(found, 99);
+    }
+
+    #[test]
+    fn consume_versioned_rejects_schema_mismatch_without_removal() {
+        let ctx = CellContext::new(store, load, remove, list);
+        let value = VersionedData { value: 9 };
+        let bytes = postcard::to_stdvec(&value).expect("serialization should succeed");
+        let tagged_type_name = format!("{}#v3", std::any::type_name::<VersionedData>());
+        store("versioned_data", bytes, &tagged_type_name);
+
+        let err = ctx
+            .consume_versioned::<VersionedData>("versioned_data")
+            .expect_err("consume_versioned should fail");
+        let Error::Context(ContextError::SchemaVersionMismatch { key, expected, found }) = err else {
+            panic!("expected schema version mismatch error");
+        };
+
+        assert_eq!(key, "versioned_data");
+        assert_eq!(expected, 1);
+        assert_eq!(found, 3);
+
+        assert!(
+            load("versioned_data").is_some(),
+            "value should still be present after failed consume_versioned"
+        );
+    }
+
+    #[test]
+    fn load_versioned_with_round_trip_without_store_schema_trait() {
+        let ctx = CellContext::new(store, load, remove, list);
+        let value = vec![10u8, 20, 30];
+        ctx.store_versioned_with("bytes", &value, 5)
+            .expect("store_versioned_with should succeed");
+
+        let loaded: Vec<u8> = ctx
+            .load_versioned_with("bytes", 5)
+            .expect("load_versioned_with should succeed");
+        assert_eq!(loaded, value);
+    }
+
+    #[test]
+    fn load_versioned_with_rejects_schema_mismatch() {
+        let ctx = CellContext::new(store, load, remove, list);
+        let value = vec![10u8, 20, 30];
+        ctx.store_versioned_with("bytes", &value, 5)
+            .expect("store_versioned_with should succeed");
+
+        let err = ctx
+            .load_versioned_with::<Vec<u8>>("bytes", 6)
+            .expect_err("load_versioned_with should fail");
+        let Error::Context(ContextError::SchemaVersionMismatch { key, expected, found }) = err else {
+            panic!("expected schema version mismatch error");
+        };
+
+        assert_eq!(key, "bytes");
+        assert_eq!(expected, 6);
+        assert_eq!(found, 5);
     }
 }

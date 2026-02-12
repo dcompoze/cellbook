@@ -49,8 +49,9 @@ async fn print_stats() -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use cellbook::test::TestContext;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_load_data() {

@@ -13,11 +13,16 @@ mod macros;
 pub mod registry;
 pub mod test;
 
-pub use cellbook_macros::{cell, init};
+pub use cellbook_macros::{StoreSchema, cell, init};
 pub use context::CellContext;
 pub use errors::{ContextError, Error, Result};
-pub use futures;
 pub use image::{open_image, open_image_bytes};
-pub use inventory;
 pub use registry::CellInfo;
-pub use serde;
+pub use {futures, inventory, serde};
+
+/// Opt-in schema version metadata for versioned shared-store operations.
+///
+/// Use `#[derive(StoreSchema)]` with `#[store_schema(version = N)]` on your type.
+pub trait StoreSchema {
+    const VERSION: u32;
+}

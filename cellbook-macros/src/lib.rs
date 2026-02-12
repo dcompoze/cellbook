@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::visit_mut::VisitMut;
-use syn::{parse_macro_input, FnArg, ItemFn};
+use syn::{DeriveInput, Expr, ExprLit, FnArg, ItemFn, Lit, Meta, MetaNameValue, parse_macro_input};
 
 /// Adds `ctx` prefix to context macro calls.
 struct CtxInjector;
@@ -10,9 +10,12 @@ impl VisitMut for CtxInjector {
     fn visit_macro_mut(&mut self, mac: &mut syn::Macro) {
         let path = &mac.path;
         let is_context_macro = path.is_ident("store")
+            || path.is_ident("storev")
             || path.is_ident("load")
+            || path.is_ident("loadv")
             || path.is_ident("remove")
-            || path.is_ident("consume");
+            || path.is_ident("consume")
+            || path.is_ident("consumev");
 
         if is_context_macro {
             let tokens = &mac.tokens;
@@ -151,5 +154,75 @@ pub fn init(_attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
+    TokenStream::from(expanded)
+}
+
+/// Derive `cellbook::StoreSchema` with a version set by `#[store_schema(version = N)]`.
+#[proc_macro_derive(StoreSchema, attributes(store_schema))]
+pub fn derive_store_schema(item: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(item as DeriveInput);
+    let ident = input.ident;
+    let generics = input.generics;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let mut version: Option<u32> = None;
+
+    for attr in &input.attrs {
+        if !attr.path().is_ident("store_schema") {
+            continue;
+        }
+
+        let parsed = match attr
+            .parse_args_with(syn::punctuated::Punctuated::<Meta, syn::Token![,]>::parse_terminated)
+        {
+            Ok(v) => v,
+            Err(e) => return e.to_compile_error().into(),
+        };
+
+        for meta in parsed {
+            let Meta::NameValue(MetaNameValue { path, value, .. }) = meta else {
+                return syn::Error::new_spanned(attr, "expected #[store_schema(version = <u32>)]")
+                    .to_compile_error()
+                    .into();
+            };
+
+            if !path.is_ident("version") {
+                return syn::Error::new_spanned(path, "unknown store_schema key")
+                    .to_compile_error()
+                    .into();
+            }
+
+            let Expr::Lit(ExprLit {
+                lit: Lit::Int(lit_int),
+                ..
+            }) = value
+            else {
+                return syn::Error::new_spanned(value, "version must be an integer literal")
+                    .to_compile_error()
+                    .into();
+            };
+
+            match lit_int.base10_parse::<u32>() {
+                Ok(v) => version = Some(v),
+                Err(e) => {
+                    return syn::Error::new_spanned(lit_int, e).to_compile_error().into();
+                }
+            }
+        }
+    }
+
+    let Some(version) = version else {
+        return syn::Error::new_spanned(
+            &ident,
+            "missing #[store_schema(version = <u32>)] for #[derive(StoreSchema)]",
+        )
+        .to_compile_error()
+        .into();
+    };
+
+    let expanded = quote! {
+        impl #impl_generics ::cellbook::StoreSchema for #ident #ty_generics #where_clause {
+            const VERSION: u32 = #version;
+        }
+    };
     TokenStream::from(expanded)
 }

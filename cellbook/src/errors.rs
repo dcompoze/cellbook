@@ -18,6 +18,8 @@ pub enum ContextError {
         expected: String,
         found: String,
     },
+    #[error("schema version mismatch for '{key}': expected v{expected}, found v{found}")]
+    SchemaVersionMismatch { key: String, expected: u32, found: u32 },
     #[error("failed to serialize '{key}': {message}")]
     Serialization { key: String, message: String },
     #[error("failed to deserialize '{key}': {message}")]

@@ -9,28 +9,29 @@ use std::io::{Read, Write};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
+pub use events::TuiEvent;
+use events::{Action, AppEvent, EventHandler, handle_key};
 use gag::BufferRedirect;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::crossterm::cursor::MoveTo;
 use ratatui::crossterm::event::Event as CrosstermEvent;
 use ratatui::crossterm::terminal::{
-    Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode,
+    Clear,
+    ClearType,
+    EnterAlternateScreen,
+    LeaveAlternateScreen,
+    disable_raw_mode,
     enable_raw_mode,
 };
 use ratatui::crossterm::{ExecutableCommand, execute};
+use state::{App, BuildStatus, CellOutput, CellStatus};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
 use crate::errors::Result;
 use crate::loader::LoadedLibrary;
-use crate::store;
-use crate::watcher;
-
-pub use events::TuiEvent;
-
-use events::{handle_key, Action, AppEvent, EventHandler};
-use state::{App, BuildStatus, CellOutput, CellStatus};
+use crate::{store, watcher};
 
 type AppTerminal = Terminal<CrosstermBackend<std::io::Stderr>>;
 
@@ -102,8 +103,7 @@ pub async fn run(
                             app.refresh_context(store::list());
                         }
                         Action::Reload => {
-                            cell_task =
-                                trigger_reload(&mut app, lib, &event_tx, cell_task.take()).await;
+                            cell_task = trigger_reload(&mut app, lib, &event_tx, cell_task.take()).await;
                         }
                         Action::Edit => {
                             let line = app.selected_cell_index().and_then(|i| {
@@ -283,10 +283,7 @@ fn spawn_cell(
     let name = cell_name.clone();
     let handle = tokio::spawn(async move {
         let start = Instant::now();
-        let (stdout, result) = capture_stdout(|| async {
-            future.await.map_err(|e| e.to_string())
-        })
-        .await;
+        let (stdout, result) = capture_stdout(|| async { future.await.map_err(|e| e.to_string()) }).await;
         let duration = start.elapsed();
 
         let _ = tx

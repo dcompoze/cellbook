@@ -7,15 +7,15 @@ use std::process::Stdio;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
 
+use notify::{RecommendedWatcher, RecursiveMode};
+use notify_debouncer_mini::{DebouncedEventKind, Debouncer, new_debouncer};
+#[cfg(windows)]
+use ratatui::crossterm::QueueableCommand;
 use ratatui::crossterm::cursor::{MoveToColumn, MoveUp};
 use ratatui::crossterm::execute;
 use ratatui::crossterm::style::Print;
 use ratatui::crossterm::terminal::{Clear, ClearType};
-#[cfg(windows)]
-use ratatui::crossterm::QueueableCommand;
 use serde::Deserialize;
-use notify::{RecommendedWatcher, RecursiveMode};
-use notify_debouncer_mini::{DebouncedEventKind, Debouncer, new_debouncer};
 use tokio::process::Command;
 use tokio::sync::{mpsc, oneshot};
 
@@ -254,7 +254,10 @@ pub async fn initial_build() -> Result<()> {
     // line 2: latest output line from the build stream
     let _ = execute!(
         std::io::stdout(),
-        Print(format!("{} Building notebook: {}\n\n", spinner_chars[0], build_cmd))
+        Print(format!(
+            "{} Building notebook: {}\n\n",
+            spinner_chars[0], build_cmd
+        ))
     );
 
     let (stop_tx, mut stop_rx) = oneshot::channel::<()>();
@@ -263,10 +266,7 @@ pub async fn initial_build() -> Result<()> {
     let spinner_handle = tokio::spawn(async move {
         let mut idx = 0;
         loop {
-            let output_line = output_for_spinner
-                .lock()
-                .map(|s| s.clone())
-                .unwrap_or_default();
+            let output_line = output_for_spinner.lock().map(|s| s.clone()).unwrap_or_default();
 
             let _ = execute!(
                 std::io::stdout(),

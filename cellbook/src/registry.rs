@@ -4,7 +4,12 @@ use futures::future::BoxFuture;
 
 use crate::context::{ListFn, LoadFn, RemoveFn, StoreFn};
 
-pub type CellFn = fn(StoreFn, LoadFn, RemoveFn, ListFn)
+pub type CellFn = fn(
+    StoreFn,
+    LoadFn,
+    RemoveFn,
+    ListFn,
+)
     -> BoxFuture<'static, std::result::Result<(), Box<dyn std::error::Error + Send + Sync>>>;
 
 pub struct CellInfo {

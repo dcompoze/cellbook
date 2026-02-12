@@ -15,8 +15,8 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::LazyLock;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use parking_lot::Mutex;
 
@@ -114,9 +114,7 @@ impl std::ops::Deref for TestContext {
 impl Drop for TestContext {
     fn drop(&mut self) {
         let prefix_with_sep = format!("{}:", self.prefix);
-        TEST_STORE
-            .lock()
-            .retain(|k, _| !k.starts_with(&prefix_with_sep));
+        TEST_STORE.lock().retain(|k, _| !k.starts_with(&prefix_with_sep));
         CURRENT_PREFIX.with(|p| *p.borrow_mut() = self.previous_prefix.clone());
     }
 }
