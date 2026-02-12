@@ -47,8 +47,17 @@ impl CellContext {
 
     /// Load a value by key.
     pub fn load<T: DeserializeOwned>(&self, key: &str) -> Result<T> {
-        let (bytes, _type_name) = (self.load_fn)(key)
+        let (bytes, stored_type_name) = (self.load_fn)(key)
             .ok_or_else(|| ContextError::NotFound(key.to_string()))?;
+        let requested_type_name = type_name::<T>();
+        if stored_type_name != requested_type_name {
+            return Err(ContextError::TypeMismatch {
+                key: key.to_string(),
+                expected: requested_type_name.to_string(),
+                found: stored_type_name,
+            }
+            .into());
+        }
 
         postcard::from_bytes(&bytes).map_err(|e| {
             ContextError::Deserialization {
@@ -67,16 +76,27 @@ impl CellContext {
 
     /// Load and remove a value in one operation.
     pub fn consume<T: DeserializeOwned>(&self, key: &str) -> Result<T> {
-        let (bytes, _type_name) = (self.remove_fn)(key)
+        let (bytes, stored_type_name) = (self.load_fn)(key)
             .ok_or_else(|| ContextError::NotFound(key.to_string()))?;
+        let requested_type_name = type_name::<T>();
+        if stored_type_name != requested_type_name {
+            return Err(ContextError::TypeMismatch {
+                key: key.to_string(),
+                expected: requested_type_name.to_string(),
+                found: stored_type_name,
+            }
+            .into());
+        }
 
-        postcard::from_bytes(&bytes).map_err(|e| {
+        let value = postcard::from_bytes(&bytes).map_err(|e| {
             ContextError::Deserialization {
                 key: key.to_string(),
                 message: e.to_string(),
             }
-            .into()
-        })
+        })?;
+
+        let _ = (self.remove_fn)(key);
+        Ok(value)
     }
 
     /// List all keys and their type names.
@@ -88,3 +108,90 @@ impl CellContext {
 // SAFETY: CellContext only contains function pointers which are Send + Sync.
 unsafe impl Send for CellContext {}
 unsafe impl Sync for CellContext {}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use std::sync::LazyLock;
+
+    use parking_lot::Mutex;
+
+    use super::*;
+    use crate::Error;
+
+    type StoredValue = (Vec<u8>, String);
+
+    static STORE: LazyLock<Mutex<HashMap<String, StoredValue>>> =
+        LazyLock::new(|| Mutex::new(HashMap::new()));
+
+    fn store(key: &str, bytes: Vec<u8>, type_name: &str) {
+        STORE
+            .lock()
+            .insert(key.to_string(), (bytes, type_name.to_string()));
+    }
+
+    fn load(key: &str) -> Option<(Vec<u8>, String)> {
+        STORE.lock().get(key).cloned()
+    }
+
+    fn remove(key: &str) -> Option<(Vec<u8>, String)> {
+        STORE.lock().remove(key)
+    }
+
+    fn list() -> Vec<(String, String)> {
+        STORE
+            .lock()
+            .iter()
+            .map(|(k, (_, ty))| (k.clone(), ty.clone()))
+            .collect()
+    }
+
+    #[test]
+    fn load_rejects_type_mismatch() {
+        let ctx = CellContext::new(store, load, remove, list);
+        let value = vec![1u8, 2, 3];
+        ctx.store("data", &value).expect("store should succeed");
+
+        let err = ctx.load::<Vec<u16>>("data").expect_err("load should fail");
+        let Error::Context(ContextError::TypeMismatch {
+            key,
+            expected,
+            found,
+        }) = err
+        else {
+            panic!("expected type mismatch error");
+        };
+
+        assert_eq!(key, "data");
+        assert_eq!(expected, std::any::type_name::<Vec<u16>>());
+        assert_eq!(found, std::any::type_name::<Vec<u8>>());
+    }
+
+    #[test]
+    fn consume_rejects_type_mismatch() {
+        let ctx = CellContext::new(store, load, remove, list);
+        let value = vec![1u8, 2, 3];
+        ctx.store("data", &value).expect("store should succeed");
+
+        let err = ctx
+            .consume::<Vec<u16>>("data")
+            .expect_err("consume should fail");
+        let Error::Context(ContextError::TypeMismatch {
+            key,
+            expected,
+            found,
+        }) = err
+        else {
+            panic!("expected type mismatch error");
+        };
+
+        assert_eq!(key, "data");
+        assert_eq!(expected, std::any::type_name::<Vec<u16>>());
+        assert_eq!(found, std::any::type_name::<Vec<u8>>());
+
+        let still_present = ctx
+            .load::<Vec<u8>>("data")
+            .expect("value should still be present after failed consume");
+        assert_eq!(still_present, value);
+    }
+}

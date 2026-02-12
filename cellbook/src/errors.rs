@@ -12,6 +12,12 @@ pub enum Error {
 pub enum ContextError {
     #[error("context variable '{0}' not found")]
     NotFound(String),
+    #[error("type mismatch for '{key}': expected '{expected}', found '{found}'")]
+    TypeMismatch {
+        key: String,
+        expected: String,
+        found: String,
+    },
     #[error("failed to serialize '{key}': {message}")]
     Serialization { key: String, message: String },
     #[error("failed to deserialize '{key}': {message}")]
