@@ -19,6 +19,7 @@ struct FeatureFlags {
 
 #[init]
 async fn setup() -> Result<()> {
+    println!("no setup");
     Ok(())
 }
 

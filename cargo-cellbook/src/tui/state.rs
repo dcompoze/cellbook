@@ -132,7 +132,11 @@ impl App {
     }
 
     pub fn store_output(&mut self, cell_name: &str, output: CellOutput) {
-        self.cell_outputs.insert(cell_name.to_string(), output);
+        if output.stdout.is_empty() {
+            self.cell_outputs.remove(cell_name);
+        } else {
+            self.cell_outputs.insert(cell_name.to_string(), output);
+        }
     }
 
     pub fn get_output(&self, cell_name: &str) -> Option<&CellOutput> {
@@ -170,5 +174,38 @@ impl App {
 
     pub fn refresh_context(&mut self, items: Vec<(String, String)>) {
         self.context_items = items;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use super::{App, CellOutput};
+
+    #[test]
+    fn empty_output_is_not_marked_as_output() {
+        let mut app = App::new(vec!["init".to_string()], false);
+        app.store_output(
+            "init",
+            CellOutput {
+                stdout: String::new(),
+                duration: Duration::from_millis(1),
+            },
+        );
+        assert!(!app.has_output("init"));
+    }
+
+    #[test]
+    fn non_empty_output_is_marked_as_output() {
+        let mut app = App::new(vec!["init".to_string()], false);
+        app.store_output(
+            "init",
+            CellOutput {
+                stdout: "hello".to_string(),
+                duration: Duration::from_millis(1),
+            },
+        );
+        assert!(app.has_output("init"));
     }
 }
