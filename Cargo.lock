@@ -336,7 +336,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-cellbook"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "clap",
  "dirs",
@@ -378,7 +378,7 @@ dependencies = [
 
 [[package]]
 name = "cellbook"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "cellbook-macros",
  "futures",
@@ -391,7 +391,7 @@ dependencies = [
 
 [[package]]
 name = "cellbook-macros"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "proc-macro2",
  "quote",
